@@ -377,34 +377,42 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           transition={{ duration: 0.7, delay: 0.3 }}
           style={{
             position: "absolute",
-            left: "5%",
-            top: "50%",
-            transform: "translateY(-50%)",
-            textAlign: "left",
+            left: isTouch ? "50%" : "5%",
+            top: isTouch ? "auto" : "50%",
+            bottom: isTouch ? "15%" : "auto",
+            transform: isTouch ? "translateX(-50%)" : "translateY(-50%)",
+            textAlign: isTouch ? "center" : "left",
             pointerEvents: "none",
             zIndex: 2,
-            maxWidth: isTouch ? "90%" : "auto",
-            padding: "24px 32px",
+            maxWidth: isTouch ? "85%" : "auto",
+            padding: isTouch ? "20px 24px" : "24px 32px",
             borderRadius: 12,
-            background: "radial-gradient(ellipse at center, rgba(5,5,7,0.6) 0%, transparent 70%)",
+            background: isTouch
+              ? "radial-gradient(ellipse at center, rgba(5,5,7,0.75) 0%, transparent 80%)"
+              : "radial-gradient(ellipse at center, rgba(5,5,7,0.6) 0%, transparent 70%)",
           }}
         >
           <div
             style={{
               fontFamily: "var(--font-mono), monospace",
-              fontSize: 11,
+              fontSize: isTouch ? 9 : 11,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
               color: "var(--text-tertiary)",
-              marginBottom: 16,
+              marginBottom: isTouch ? 10 : 16,
+              lineHeight: 1.6,
             }}
           >
-            Home of Alexander Wolf Pedersen
+            {isTouch ? (
+              <>Home of<br />Alexander Wolf Pedersen</>
+            ) : (
+              "Home of Alexander Wolf Pedersen"
+            )}
           </div>
           <h1
             className="gradient-text"
             style={{
-              fontSize: "clamp(2rem, 5vw, 4.5rem)",
+              fontSize: isTouch ? "clamp(1.6rem, 7vw, 2.5rem)" : "clamp(2rem, 5vw, 4.5rem)",
               fontWeight: 600,
               lineHeight: 1.1,
               letterSpacing: "-0.04em",
@@ -432,10 +440,10 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           <span
             style={{
               fontFamily: "var(--font-mono), monospace",
-              fontSize: "10px",
+              fontSize: "11px",
               letterSpacing: "0.2em",
               textTransform: "uppercase",
-              color: "rgba(255,255,255,0.35)",
+              color: "rgba(255,255,255,0.5)",
             }}
           >
             Scroll to explore

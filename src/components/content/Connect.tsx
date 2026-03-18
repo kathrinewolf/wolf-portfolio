@@ -232,20 +232,52 @@ function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const [sending, setSending] = useState(false);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSending(true);
+
     const form = e.currentTarget;
     const data = new FormData(form);
-    const name = data.get("name") as string;
-    const email = data.get("email") as string;
-    const message = data.get("message") as string;
 
-    // Simple mailto fallback
-    const subject = encodeURIComponent(`Message from ${name}`);
-    const body = encodeURIComponent(`From: ${name} (${email})\n\n${message}`);
-    window.open(`mailto:ap@alexanderwp.com?subject=${subject}&body=${body}`);
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3000);
+    try {
+      const res = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          access_key: "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
+          name: data.get("name"),
+          email: data.get("email"),
+          message: data.get("message"),
+          to: "ap@alexanderwp.com",
+        }),
+      });
+
+      if (res.ok) {
+        setSubmitted(true);
+        form.reset();
+        setTimeout(() => setSubmitted(false), 4000);
+      } else {
+        // Fallback to mailto
+        const name = data.get("name") as string;
+        const email = data.get("email") as string;
+        const message = data.get("message") as string;
+        const subject = encodeURIComponent(`Message from ${name}`);
+        const body = encodeURIComponent(`From: ${name} (${email})\n\n${message}`);
+        window.open(`mailto:ap@alexanderwp.com?subject=${subject}&body=${body}`);
+      }
+    } catch {
+      // Fallback to mailto on network error
+      const name = data.get("name") as string;
+      const email = data.get("email") as string;
+      const message = data.get("message") as string;
+      const subject = encodeURIComponent(`Message from ${name}`);
+      const body = encodeURIComponent(`From: ${name} (${email})\n\n${message}`);
+      window.open(`mailto:ap@alexanderwp.com?subject=${subject}&body=${body}`);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -274,7 +306,7 @@ function ContactForm() {
             gap: 12,
           }}
         >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
             <input
               name="name"
               placeholder="Name"
@@ -365,7 +397,7 @@ function ContactForm() {
               }
             }}
           >
-            {submitted ? "Opening mail client..." : "Send message"}
+            {submitted ? "Message sent!" : sending ? "Sending..." : "Send message"}
           </motion.button>
         </form>
       </FadeIn>

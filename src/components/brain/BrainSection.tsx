@@ -281,7 +281,7 @@ export function BrainSection({ active, onExitBrain }: BrainSectionProps) {
                 overflowY: "auto",
                 overflowX: "hidden",
                 overscrollBehavior: "contain",
-                padding: window.innerWidth < 768 ? "32px 16px" : "64px 48px",
+                padding: "clamp(24px, 5vw, 64px) clamp(16px, 4vw, 48px)",
               }}
             >
               <Suspense
@@ -420,24 +420,11 @@ function HubLabelsOverlay({
     return () => cancelAnimationFrame(raf);
   }, [hubs, entered, visible, brainRotationRef]);
 
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-
   return (
     <div
       ref={containerRef}
-      style={isMobile ? {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 10,
-        pointerEvents: "none",
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "8px",
-        padding: "16px 20px",
-        paddingBottom: "max(16px, env(safe-area-inset-bottom))",
-      } : {
+      className="hub-labels-container"
+      style={{
         position: "absolute",
         inset: 0,
         zIndex: 10,
@@ -482,21 +469,21 @@ const HubLabelButtonTracked = forwardRef<
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        position: typeof window !== "undefined" && window.innerWidth < 768 ? "relative" : "absolute",
-        left: typeof window !== "undefined" && window.innerWidth < 768 ? "auto" : "50%",
-        top: typeof window !== "undefined" && window.innerWidth < 768 ? "auto" : "50%",
-        transform: typeof window !== "undefined" && window.innerWidth < 768 ? "none" : "translate(-50%, 10px)",
+        position: "absolute",
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, 10px)",
         pointerEvents: "none",
         opacity: 0,
         transition: "background 0.3s ease",
-        background: hovered ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(255,255,255,0.06)",
+        background: hovered ? "rgba(255,255,255,0.08)" : "none",
+        border: "none",
         borderRadius: 10,
-        padding: typeof window !== "undefined" && window.innerWidth < 768 ? "14px 12px" : "8px 14px",
+        padding: "10px 16px",
         whiteSpace: "nowrap",
         display: "flex",
         flexDirection: "column",
-        alignItems: typeof window !== "undefined" && window.innerWidth < 768 ? "flex-start" : "center",
+        alignItems: "center",
         gap: 4,
       }}
     >
