@@ -232,6 +232,8 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           completeFired.current = false;
           hasScrolled.current = false;
           idleFrame.current = 0;
+          lastDrawnIndex.current = -1; // Force canvas redraw
+          progressRef.current = 0;
         }
       };
       requestAnimationFrame(step);
@@ -362,14 +364,10 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           background: "var(--bg-deep)",
         }}
       >
-        {isTouch ? (
-          <MobileVideo />
-        ) : (
-          <canvas
-            ref={canvasRef}
-            style={{ width: "100%", height: "100%", display: "block" }}
-          />
-        )}
+        <canvas
+          ref={canvasRef}
+          style={{ width: "100%", height: "100%", display: "block" }}
+        />
 
         {/* Hero text overlay */}
         <motion.div
@@ -379,13 +377,13 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           transition={{ duration: 0.7, delay: 0.3 }}
           style={{
             position: "absolute",
-            left: isTouch ? "50%" : "5%",
-            top: isTouch ? "auto" : "50%",
-            bottom: isTouch ? "15%" : "auto",
-            transform: isTouch ? "translateX(-50%)" : "translateY(-50%)",
-            textAlign: isTouch ? "center" : "left",
+            left: "5%",
+            top: "50%",
+            transform: "translateY(-50%)",
+            textAlign: "left",
             pointerEvents: "none",
             zIndex: 2,
+            maxWidth: isTouch ? "90%" : "auto",
           }}
         >
           <div
@@ -403,7 +401,7 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           <h1
             className="gradient-text"
             style={{
-              fontSize: isTouch ? "clamp(2rem, 8vw, 3rem)" : "clamp(2.5rem, 5vw, 4.5rem)",
+              fontSize: "clamp(2rem, 5vw, 4.5rem)",
               fontWeight: 600,
               lineHeight: 1.1,
               letterSpacing: "-0.04em",
@@ -417,23 +415,38 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           ref={scrollHintRef}
           style={{
             position: "absolute",
-            bottom: "40px",
+            bottom: "48px",
             left: "50%",
             transform: "translateX(-50%)",
             transition: "opacity 0.6s ease",
             pointerEvents: "none",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "8px",
           }}
         >
+          <span
+            style={{
+              fontFamily: "var(--font-mono), monospace",
+              fontSize: "10px",
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.35)",
+            }}
+          >
+            Scroll to explore
+          </span>
           <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
             fill="none"
             className="animate-scroll-hint"
           >
             <path
-              d="M12 5v14M5 12l7 7 7-7"
-              stroke="rgba(255,255,255,0.4)"
+              d="M10 4v12M4 10l6 6 6-6"
+              stroke="rgba(255,255,255,0.5)"
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -445,32 +458,4 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
   );
 }
 
-function MobileVideo() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [hasScrolled, setHasScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => {
-      if (!hasScrolled && window.scrollY > 50) {
-        setHasScrolled(true);
-        videoRef.current?.play();
-      }
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [hasScrolled]);
-
-  return (
-    <video
-      ref={videoRef}
-      src="/hero-video.mp4"
-      muted
-      playsInline
-      style={{
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-      }}
-    />
-  );
-}
+// MobileVideo removed — using canvas frame sequence on all devices

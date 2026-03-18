@@ -8,7 +8,7 @@ import {
   getShowcaseTimeline,
 } from "./portfolioShowcaseTimeline";
 
-const PHOTO = "https://habit.alexanderwp.com/assets/athlete-avatar-CswwWmKv.png";
+const PHOTO = "/playground/health-athlete.png";
 const EASE = "cubic-bezier(0.2, 0, 0, 1)";
 
 /* ---- Warm light palette (matches habit.alexanderwp.com) ---- */

@@ -168,7 +168,7 @@ function VirtueScatter() {
               position: "absolute",
               left: pos.x,
               top: pos.y,
-              fontSize: pos.size,
+              fontSize: typeof window !== "undefined" && window.innerWidth < 768 ? pos.size * 0.7 : pos.size,
               fontWeight: pos.weight,
               letterSpacing: pos.size > 24 ? "-0.03em" : "0.04em",
               textTransform: pos.size < 20 ? "uppercase" : "none",

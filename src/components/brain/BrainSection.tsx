@@ -278,9 +278,10 @@ export function BrainSection({ active, onExitBrain }: BrainSectionProps) {
                 width: "100%",
                 maxWidth: activeHub === "playground" || activeHub === "who-i-am" || activeHub === "craft" ? "1100px" : "800px",
                 maxHeight: "85vh",
-                overflow: "auto",
+                overflowY: "auto",
+                overflowX: "hidden",
                 overscrollBehavior: "contain",
-                padding: "64px 48px",
+                padding: window.innerWidth < 768 ? "32px 16px" : "64px 48px",
               }}
             >
               <Suspense
@@ -332,10 +333,13 @@ function HubLabelsOverlay({
     [hubs]
   );
 
+  const isMobileRef = useRef(false);
+
   // Create a persistent camera for projection
   useEffect(() => {
     const aspect = window.innerWidth / window.innerHeight;
     const isMobile = aspect < 1;
+    isMobileRef.current = isMobile;
     const fov = isMobile ? 65 : 50;
     const z = isMobile ? 14.5 : 8;
     cameraRef.current = new THREE.PerspectiveCamera(fov, aspect, 0.1, 100);
@@ -386,17 +390,18 @@ function HubLabelsOverlay({
         const el = labelRefsArr.current[i];
         if (!el) return;
 
-        // Position tracking
-        const vec = new THREE.Vector3(...hub.position);
-        vec.applyMatrix4(group.matrixWorld);
-        vec.project(cameraRef.current!);
-        const x = ((vec.x + 1) / 2) * 100;
-        const y = ((-vec.y + 1) / 2) * 100;
-        el.style.left = `${x}%`;
-        el.style.top = `${y}%`;
+        // On mobile: labels are positioned by CSS grid, skip 3D projection
+        if (!isMobileRef.current) {
+          const vec = new THREE.Vector3(...hub.position);
+          vec.applyMatrix4(group.matrixWorld);
+          vec.project(cameraRef.current!);
+          const x = ((vec.x + 1) / 2) * 100;
+          const y = ((-vec.y + 1) / 2) * 100;
+          el.style.left = `${x}%`;
+          el.style.top = `${y}%`;
+        }
 
-        // Staggered opacity: each label fades in 1s after its hub dot
-        // Hub dots appear at 0, 1, 2, 3, 4s. Labels at 1, 2, 3, 4, 5s.
+        // Staggered opacity
         if (entered && visible) {
           const delay = i * 1.0 + 1.0;
           const fadeDur = 1.0;
@@ -415,10 +420,24 @@ function HubLabelsOverlay({
     return () => cancelAnimationFrame(raf);
   }, [hubs, entered, visible, brainRotationRef]);
 
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+
   return (
     <div
       ref={containerRef}
-      style={{
+      style={isMobile ? {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
+        pointerEvents: "none",
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "8px",
+        padding: "16px 20px",
+        paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+      } : {
         position: "absolute",
         inset: 0,
         zIndex: 10,
@@ -463,22 +482,22 @@ const HubLabelButtonTracked = forwardRef<
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        position: "absolute",
-        left: "50%",
-        top: "50%",
-        transform: "translate(-50%, 10px)",
+        position: typeof window !== "undefined" && window.innerWidth < 768 ? "relative" : "absolute",
+        left: typeof window !== "undefined" && window.innerWidth < 768 ? "auto" : "50%",
+        top: typeof window !== "undefined" && window.innerWidth < 768 ? "auto" : "50%",
+        transform: typeof window !== "undefined" && window.innerWidth < 768 ? "none" : "translate(-50%, 10px)",
         pointerEvents: "none",
         opacity: 0,
         transition: "background 0.3s ease",
-        background: hovered ? "rgba(255,255,255,0.03)" : "none",
-        border: "none",
-        borderRadius: 8,
-        padding: "8px 14px",
+        background: hovered ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: 10,
+        padding: typeof window !== "undefined" && window.innerWidth < 768 ? "14px 12px" : "8px 14px",
         whiteSpace: "nowrap",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        gap: 6,
+        alignItems: typeof window !== "undefined" && window.innerWidth < 768 ? "flex-start" : "center",
+        gap: 4,
       }}
     >
       <span style={{ fontWeight: 500 }}>{data.label}</span>

@@ -374,6 +374,7 @@ function SectionDualNature() {
 
       <FadeIn visible={inView} delay={0.15}>
         <div
+          className="dual-nature-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1px 1fr",
@@ -408,7 +409,7 @@ function SectionDualNature() {
             </motion.div>
           </div>
 
-          <div style={{ background: "var(--stroke)" }} />
+          <div className="dual-nature-divider" style={{ background: "var(--stroke)" }} />
 
           <div style={{ padding: "32px 28px" }}>
             <motion.div
