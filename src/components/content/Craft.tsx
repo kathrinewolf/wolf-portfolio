@@ -270,6 +270,7 @@ function SectionIntersection() {
       </FadeIn>
 
       <div
+        className="venn-container"
         style={{
           position: "relative",
           height: 340,
@@ -465,6 +466,7 @@ function SectionConstellation() {
       </FadeIn>
 
       <div
+        className="constellation-container"
         style={{
           position: "relative",
           height: 400,

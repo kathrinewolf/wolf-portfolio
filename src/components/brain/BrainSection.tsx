@@ -281,6 +281,7 @@ export function BrainSection({ active, onExitBrain }: BrainSectionProps) {
                 overflowY: "auto",
                 overflowX: "hidden",
                 overscrollBehavior: "contain",
+                WebkitOverflowScrolling: "touch",
                 padding: "clamp(24px, 5vw, 64px) clamp(16px, 4vw, 48px)",
               }}
             >

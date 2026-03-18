@@ -451,22 +451,22 @@ function NebulaClouds({ entered }: { entered: boolean }) {
   const enteredTime = useRef<number | null>(null);
   const wasEntered = useRef(false);
 
-  // Nebula patches — large, vivid, overlapping for depth
+  // Nebula patches — VIVID, large, overlapping. These must be clearly visible.
   const clouds = useMemo(() => [
-    // Deep blue cosmic wash — large background
-    { pos: [-6, 4, -30] as [number, number, number], scale: 35, color: [0.06, 0.08, 0.22] as [number, number, number], opacity: 0.18, rot: 0.3 },
-    // Warm magenta accent — upper right
-    { pos: [12, 3, -28] as [number, number, number], scale: 28, color: [0.18, 0.06, 0.14] as [number, number, number], opacity: 0.12, rot: -0.5 },
-    // Cool teal — lower area
-    { pos: [-4, -6, -25] as [number, number, number], scale: 30, color: [0.04, 0.10, 0.18] as [number, number, number], opacity: 0.14, rot: 0.8 },
-    // Purple haze — center-right
-    { pos: [8, -2, -35] as [number, number, number], scale: 32, color: [0.10, 0.04, 0.16] as [number, number, number], opacity: 0.10, rot: -0.2 },
-    // Deep violet — far background wash
-    { pos: [0, 0, -40] as [number, number, number], scale: 45, color: [0.05, 0.03, 0.12] as [number, number, number], opacity: 0.15, rot: 1.2 },
-    // Subtle warm glow — lower left
-    { pos: [-14, -4, -22] as [number, number, number], scale: 24, color: [0.14, 0.06, 0.08] as [number, number, number], opacity: 0.08, rot: 0.6 },
-    // Blue streak — top
-    { pos: [2, 8, -32] as [number, number, number], scale: 30, color: [0.04, 0.06, 0.20] as [number, number, number], opacity: 0.10, rot: -0.8 },
+    // Deep blue cosmic wash — large background fill
+    { pos: [-5, 3, -18] as [number, number, number], scale: 40, color: [0.12, 0.15, 0.45] as [number, number, number], opacity: 0.35, rot: 0.3 },
+    // Warm magenta/rose — upper right accent
+    { pos: [10, 4, -20] as [number, number, number], scale: 32, color: [0.40, 0.10, 0.28] as [number, number, number], opacity: 0.22, rot: -0.5 },
+    // Teal/cyan — lower left glow
+    { pos: [-8, -5, -16] as [number, number, number], scale: 35, color: [0.08, 0.22, 0.38] as [number, number, number], opacity: 0.28, rot: 0.8 },
+    // Purple haze — center backdrop
+    { pos: [4, -1, -22] as [number, number, number], scale: 38, color: [0.20, 0.08, 0.35] as [number, number, number], opacity: 0.20, rot: -0.2 },
+    // Deep violet full wash — farthest back, sets the mood
+    { pos: [0, 0, -25] as [number, number, number], scale: 55, color: [0.10, 0.06, 0.25] as [number, number, number], opacity: 0.30, rot: 1.2 },
+    // Warm amber accent — adds warmth to lower left
+    { pos: [-12, -3, -15] as [number, number, number], scale: 28, color: [0.30, 0.12, 0.06] as [number, number, number], opacity: 0.15, rot: 0.6 },
+    // Bright blue streak — top center
+    { pos: [2, 7, -19] as [number, number, number], scale: 30, color: [0.08, 0.12, 0.40] as [number, number, number], opacity: 0.25, rot: -0.8 },
   ], []);
 
   const materials = useMemo(() => clouds.map(c =>

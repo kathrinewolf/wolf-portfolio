@@ -224,9 +224,30 @@ html.lenis, html.lenis body { height: auto; }
     height: auto;
   }
 
-  /* Contact method cards: stack properly */
-  [data-lenis-prevent] a[style*="flex-start"] {
-    flex-wrap: nowrap;
+  /* Venn diagram: scale down on mobile */
+  .venn-container {
+    transform: scale(0.6) !important;
+    transform-origin: center center !important;
+    height: 240px !important;
+    margin-bottom: -40px !important;
+  }
+
+  /* Constellation: shorter on mobile, prevent overflow */
+  .constellation-container {
+    height: 280px !important;
+  }
+  .constellation-container span {
+    font-size: 10px !important;
+  }
+
+  /* Health dashboard embed: stack metrics grid */
+  [data-lenis-prevent] [style*="repeat(4"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* 2-column grids in embed: also stack */
+  [data-lenis-prevent] [style*="0.92fr"] {
+    grid-template-columns: 1fr !important;
   }
 }
 
