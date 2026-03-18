@@ -377,42 +377,35 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           transition={{ duration: 0.7, delay: 0.3 }}
           style={{
             position: "absolute",
-            left: isTouch ? "50%" : "5%",
-            top: isTouch ? "auto" : "50%",
-            bottom: isTouch ? "15%" : "auto",
-            transform: isTouch ? "translateX(-50%)" : "translateY(-50%)",
-            textAlign: isTouch ? "center" : "left",
+            left: isTouch ? "5%" : "5%",
+            top: isTouch ? "28%" : "50%",
+            transform: isTouch ? "none" : "translateY(-50%)",
+            textAlign: "left",
             pointerEvents: "none",
             zIndex: 2,
-            maxWidth: isTouch ? "85%" : "auto",
-            padding: isTouch ? "20px 24px" : "24px 32px",
+            maxWidth: isTouch ? "60%" : "auto",
+            padding: isTouch ? "16px 20px" : "24px 32px",
             borderRadius: 12,
-            background: isTouch
-              ? "radial-gradient(ellipse at center, rgba(5,5,7,0.75) 0%, transparent 80%)"
-              : "radial-gradient(ellipse at center, rgba(5,5,7,0.6) 0%, transparent 70%)",
+            background: "none",
           }}
         >
           <div
             style={{
               fontFamily: "var(--font-mono), monospace",
-              fontSize: isTouch ? 9 : 11,
+              fontSize: isTouch ? 8 : 11,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
               color: "var(--text-tertiary)",
-              marginBottom: isTouch ? 10 : 16,
+              marginBottom: isTouch ? 8 : 16,
               lineHeight: 1.6,
             }}
           >
-            {isTouch ? (
-              <>Home of<br />Alexander Wolf Pedersen</>
-            ) : (
-              "Home of Alexander Wolf Pedersen"
-            )}
+            Home of<br />Alexander Wolf Pedersen
           </div>
           <h1
             className="gradient-text"
             style={{
-              fontSize: isTouch ? "clamp(1.6rem, 7vw, 2.5rem)" : "clamp(2rem, 5vw, 4.5rem)",
+              fontSize: isTouch ? "clamp(1.4rem, 5.5vw, 2rem)" : "clamp(2rem, 5vw, 4.5rem)",
               fontWeight: 600,
               lineHeight: 1.1,
               letterSpacing: "-0.04em",

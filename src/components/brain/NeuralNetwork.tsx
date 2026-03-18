@@ -388,6 +388,23 @@ function StarLayers({ entered }: { entered: boolean }) {
 
     const elapsed = enteredTime.current !== null ? t - enteredTime.current : -1;
 
+    // Slow parallax drift — each layer moves at different speed
+    if (farRef.current) {
+      farRef.current.rotation.y = t * 0.003;
+      farRef.current.rotation.x = Math.sin(t * 0.005) * 0.01;
+    }
+    if (midRef.current) {
+      midRef.current.rotation.y = t * 0.006;
+      midRef.current.rotation.x = Math.sin(t * 0.008 + 0.5) * 0.015;
+      midRef.current.position.x = Math.sin(t * 0.01) * 0.3;
+    }
+    if (nearRef.current) {
+      nearRef.current.rotation.y = t * 0.01;
+      nearRef.current.rotation.x = Math.sin(t * 0.012 + 1.0) * 0.02;
+      nearRef.current.position.x = Math.sin(t * 0.015) * 0.5;
+      nearRef.current.position.y = Math.cos(t * 0.012) * 0.3;
+    }
+
     // Update each layer
     const layers = [
       { ref: farRef, data: farLayer, entranceStart: 1.5, entranceSpread: 4.0, twinkleSpeed: 0.2, twinkleAmt: 0.1 },
@@ -409,7 +426,7 @@ function StarLayers({ entered }: { entered: boolean }) {
         }
 
         // Multi-frequency twinkle for realism
-        const phase = i * 1.618; // golden ratio spread
+        const phase = i * 1.618;
         const twinkle = 1.0 +
           layer.twinkleAmt * Math.sin(t * layer.twinkleSpeed + phase) *
           Math.sin(t * layer.twinkleSpeed * 1.7 + phase * 0.7);
@@ -434,13 +451,22 @@ function NebulaClouds({ entered }: { entered: boolean }) {
   const enteredTime = useRef<number | null>(null);
   const wasEntered = useRef(false);
 
-  // Define 4-5 nebula patches at different positions
+  // Nebula patches — large, vivid, overlapping for depth
   const clouds = useMemo(() => [
-    { pos: [-8, 3, -25] as [number, number, number], scale: 18, color: [0.08, 0.06, 0.18] as [number, number, number], opacity: 0.12, rot: 0.3 },
-    { pos: [10, -4, -30] as [number, number, number], scale: 22, color: [0.12, 0.05, 0.10] as [number, number, number], opacity: 0.08, rot: -0.5 },
-    { pos: [0, 6, -35] as [number, number, number], scale: 25, color: [0.04, 0.06, 0.14] as [number, number, number], opacity: 0.10, rot: 0.8 },
-    { pos: [-12, -5, -20] as [number, number, number], scale: 15, color: [0.06, 0.04, 0.12] as [number, number, number], opacity: 0.07, rot: -0.2 },
-    { pos: [6, 2, -28] as [number, number, number], scale: 20, color: [0.10, 0.04, 0.08] as [number, number, number], opacity: 0.06, rot: 1.2 },
+    // Deep blue cosmic wash — large background
+    { pos: [-6, 4, -30] as [number, number, number], scale: 35, color: [0.06, 0.08, 0.22] as [number, number, number], opacity: 0.18, rot: 0.3 },
+    // Warm magenta accent — upper right
+    { pos: [12, 3, -28] as [number, number, number], scale: 28, color: [0.18, 0.06, 0.14] as [number, number, number], opacity: 0.12, rot: -0.5 },
+    // Cool teal — lower area
+    { pos: [-4, -6, -25] as [number, number, number], scale: 30, color: [0.04, 0.10, 0.18] as [number, number, number], opacity: 0.14, rot: 0.8 },
+    // Purple haze — center-right
+    { pos: [8, -2, -35] as [number, number, number], scale: 32, color: [0.10, 0.04, 0.16] as [number, number, number], opacity: 0.10, rot: -0.2 },
+    // Deep violet — far background wash
+    { pos: [0, 0, -40] as [number, number, number], scale: 45, color: [0.05, 0.03, 0.12] as [number, number, number], opacity: 0.15, rot: 1.2 },
+    // Subtle warm glow — lower left
+    { pos: [-14, -4, -22] as [number, number, number], scale: 24, color: [0.14, 0.06, 0.08] as [number, number, number], opacity: 0.08, rot: 0.6 },
+    // Blue streak — top
+    { pos: [2, 8, -32] as [number, number, number], scale: 30, color: [0.04, 0.06, 0.20] as [number, number, number], opacity: 0.10, rot: -0.8 },
   ], []);
 
   const materials = useMemo(() => clouds.map(c =>
@@ -481,11 +507,26 @@ function NebulaClouds({ entered }: { entered: boolean }) {
     });
   });
 
+  const cloudRefs = useRef<(THREE.Mesh | null)[]>([]);
+
+  // Slow nebula drift
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    cloudRefs.current.forEach((mesh, i) => {
+      if (!mesh) return;
+      const speed = 0.003 + i * 0.001;
+      mesh.position.x = clouds[i].pos[0] + Math.sin(t * speed + i * 2.0) * 1.5;
+      mesh.position.y = clouds[i].pos[1] + Math.cos(t * speed * 0.7 + i * 1.5) * 0.8;
+      mesh.rotation.z = clouds[i].rot + t * 0.002 * (i % 2 === 0 ? 1 : -1);
+    });
+  });
+
   return (
     <>
       {clouds.map((cloud, i) => (
         <mesh
           key={i}
+          ref={(el) => { cloudRefs.current[i] = el; }}
           position={cloud.pos}
           rotation={[0, 0, cloud.rot]}
         >
