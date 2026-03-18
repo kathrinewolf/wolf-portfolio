@@ -246,7 +246,7 @@ function ContactForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          access_key: "f1a2b3c4-d5e6-7890-abcd-ef1234567890",
+          access_key: "2b939fd1-3568-4643-bd84-2479cbc23aee",
           name: data.get("name"),
           email: data.get("email"),
           message: data.get("message"),

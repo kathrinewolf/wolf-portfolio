@@ -173,7 +173,8 @@ function NeuralScene({
         <planeGeometry args={[20, 12]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
-      {/* Atmosphere created by node glow + dust */}
+      {/* Deep starfield background */}
+      <Starfield entered={entered} />
       {/* Floating dust particles */}
       <DustParticles entered={entered} />
       <group ref={brainGroupRef}>
@@ -184,9 +185,126 @@ function NeuralScene({
   );
 }
 
-// ========================= ATMOSPHERE =========================
+// ========================= STARFIELD =========================
 
-// Atmospheric glow removed — let node glow create atmosphere naturally
+const starVertShader = `
+  attribute float aSize;
+  attribute float aBrightness;
+  varying float vBrightness;
+  void main() {
+    vBrightness = aBrightness;
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = aSize * (150.0 / -mvPosition.z);
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const starFragShader = `
+  varying float vBrightness;
+  void main() {
+    float d = length(gl_PointCoord - vec2(0.5));
+    if (d > 0.5) discard;
+    // Tight core with soft halo
+    float core = smoothstep(0.15, 0.0, d) * 0.8;
+    float halo = exp(-d * d * 12.0) * 0.4;
+    float alpha = (core + halo) * vBrightness;
+    // Cool white with very subtle blue shift
+    vec3 color = vec3(0.85, 0.88, 1.0) * (core + halo) * vBrightness;
+    gl_FragColor = vec4(color, alpha);
+  }
+`;
+
+function Starfield({ entered }: { entered: boolean }) {
+  const count = 300;
+  const pointsRef = useRef<THREE.Points>(null);
+
+  const { positions, sizes, brightnesses, baseBrightnesses, twinklePhases } = useMemo(() => {
+    const pos = new Float32Array(count * 3);
+    const sz = new Float32Array(count);
+    const br = new Float32Array(count);
+    const bbr = new Float32Array(count);
+    const tp = new Float32Array(count);
+
+    for (let i = 0; i < count; i++) {
+      // Spread across a wide dome behind the brain
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * Math.PI * 0.8; // hemisphere
+      const r = 12 + Math.random() * 20; // far behind
+
+      pos[i * 3] = Math.sin(phi) * Math.cos(theta) * r;
+      pos[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * r * 0.6; // compress vertically
+      pos[i * 3 + 2] = -Math.abs(Math.cos(phi) * r) - 3; // always behind brain
+
+      // Most stars tiny, a few larger
+      const isBright = Math.random() > 0.92;
+      sz[i] = isBright ? 1.2 + Math.random() * 1.5 : 0.3 + Math.random() * 0.7;
+      const b = isBright ? 0.4 + Math.random() * 0.4 : 0.08 + Math.random() * 0.15;
+      br[i] = b;
+      bbr[i] = b;
+      tp[i] = Math.random() * Math.PI * 2; // random twinkle phase
+    }
+
+    return { positions: pos, sizes: sz, brightnesses: br, baseBrightnesses: bbr, twinklePhases: tp };
+  }, []);
+
+  // Slow entrance + gentle twinkle
+  const enteredTime = useRef<number | null>(null);
+  const wasEntered = useRef(false);
+
+  useFrame(({ clock }) => {
+    if (!pointsRef.current) return;
+    const t = clock.getElapsedTime();
+
+    if (entered && !wasEntered.current) {
+      enteredTime.current = t;
+      wasEntered.current = true;
+    }
+
+    const brAttr = pointsRef.current.geometry.getAttribute("aBrightness") as THREE.BufferAttribute;
+    const elapsed = enteredTime.current !== null ? t - enteredTime.current : -1;
+
+    for (let i = 0; i < count; i++) {
+      // Slow fade-in over 3-8 seconds (staggered by index hash)
+      let entrance = 0;
+      if (elapsed >= 0) {
+        const hash = Math.sin(i * 311.7 + 127.1) * 43758.5453;
+        const delay = 2.0 + (hash - Math.floor(hash)) * 6.0;
+        const raw = Math.max(0, Math.min(1, (elapsed - delay) / 1.5));
+        entrance = raw * raw; // ease-in for stars — they emerge gradually
+      }
+
+      // Gentle twinkle — slow, subtle
+      const twinkle = 1.0 + 0.15 * Math.sin(t * 0.3 + twinklePhases[i]) *
+        Math.sin(t * 0.7 + twinklePhases[i] * 2.3);
+
+      brAttr.setX(i, baseBrightnesses[i] * twinkle * entrance);
+    }
+    brAttr.needsUpdate = true;
+  });
+
+  const material = useMemo(
+    () => new THREE.ShaderMaterial({
+      vertexShader: starVertShader,
+      fragmentShader: starFragShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    }),
+    []
+  );
+
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
+    geo.setAttribute("aBrightness", new THREE.BufferAttribute(brightnesses, 1));
+    return geo;
+  }, [positions, sizes, brightnesses]);
+
+  return <points ref={pointsRef} geometry={geometry} material={material} />;
+}
+
+// ========================= ATMOSPHERE =========================
 
 // Floating dust particles — tiny, slow, atmospheric
 const dustVertShader = `
