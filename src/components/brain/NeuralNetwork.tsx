@@ -185,102 +185,187 @@ function NeuralScene({
   );
 }
 
-// ========================= STARFIELD =========================
+// ========================= DEEP SPACE ENVIRONMENT =========================
 
+// --- Star shaders with per-star color temperature ---
 const starVertShader = `
   attribute float aSize;
   attribute float aBrightness;
+  attribute vec3 aColor;
   varying float vBrightness;
+  varying vec3 vColor;
   void main() {
     vBrightness = aBrightness;
+    vColor = aColor;
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = aSize * (150.0 / -mvPosition.z);
+    gl_PointSize = aSize * (200.0 / -mvPosition.z);
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
 
 const starFragShader = `
   varying float vBrightness;
+  varying vec3 vColor;
   void main() {
     float d = length(gl_PointCoord - vec2(0.5));
     if (d > 0.5) discard;
-    // Tight core with soft halo
-    float core = smoothstep(0.15, 0.0, d) * 0.8;
-    float halo = exp(-d * d * 12.0) * 0.4;
-    float alpha = (core + halo) * vBrightness;
-    // Cool white with very subtle blue shift
-    vec3 color = vec3(0.85, 0.88, 1.0) * (core + halo) * vBrightness;
-    gl_FragColor = vec4(color, alpha);
+    // Sharp core + diffraction halo
+    float core = smoothstep(0.12, 0.0, d);
+    float inner = exp(-d * d * 18.0) * 0.6;
+    float outer = exp(-d * d * 4.0) * 0.15;
+    float intensity = (core + inner + outer) * vBrightness;
+    gl_FragColor = vec4(vColor * intensity, intensity);
+  }
+`;
+
+// --- Nebula cloud shader — soft volumetric fog ---
+const nebulaVertShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const nebulaFragShader = `
+  uniform float uTime;
+  uniform vec3 uColor;
+  uniform float uOpacity;
+  varying vec2 vUv;
+
+  // Simplex-like noise
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 4; i++) {
+      v += a * noise(p);
+      p *= 2.1;
+      a *= 0.5;
+    }
+    return v;
+  }
+
+  void main() {
+    vec2 uv = vUv;
+    // Animated flowing noise
+    float n = fbm(uv * 3.0 + uTime * 0.02);
+    float n2 = fbm(uv * 5.0 - uTime * 0.015 + 100.0);
+    float cloud = n * n2;
+    // Soft circular falloff from center
+    float dist = length(uv - 0.5) * 2.0;
+    float falloff = smoothstep(1.0, 0.2, dist);
+    float alpha = cloud * falloff * uOpacity;
+    gl_FragColor = vec4(uColor, alpha);
   }
 `;
 
 function Starfield({ entered }: { entered: boolean }) {
-  const count = 300;
-  const pointsRef = useRef<THREE.Points>(null);
+  return (
+    <group>
+      <StarLayers entered={entered} />
+      <NebulaClouds entered={entered} />
+    </group>
+  );
+}
 
-  const { positions, sizes, brightnesses, baseBrightnesses, twinklePhases } = useMemo(() => {
-    const pos = new Float32Array(count * 3);
-    const sz = new Float32Array(count);
-    const br = new Float32Array(count);
-    const bbr = new Float32Array(count);
-    const tp = new Float32Array(count);
+// 3 depth layers: far (tiny dense), mid, near (few bright with parallax)
+function StarLayers({ entered }: { entered: boolean }) {
+  const farRef = useRef<THREE.Points>(null);
+  const midRef = useRef<THREE.Points>(null);
+  const nearRef = useRef<THREE.Points>(null);
 
-    for (let i = 0; i < count; i++) {
-      // Spread across a wide dome behind the brain
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI * 0.8; // hemisphere
-      const r = 12 + Math.random() * 20; // far behind
-
-      pos[i * 3] = Math.sin(phi) * Math.cos(theta) * r;
-      pos[i * 3 + 1] = Math.sin(phi) * Math.sin(theta) * r * 0.6; // compress vertically
-      pos[i * 3 + 2] = -Math.abs(Math.cos(phi) * r) - 3; // always behind brain
-
-      // Most stars tiny, a few larger
-      const isBright = Math.random() > 0.92;
-      sz[i] = isBright ? 1.2 + Math.random() * 1.5 : 0.3 + Math.random() * 0.7;
-      const b = isBright ? 0.4 + Math.random() * 0.4 : 0.08 + Math.random() * 0.15;
-      br[i] = b;
-      bbr[i] = b;
-      tp[i] = Math.random() * Math.PI * 2; // random twinkle phase
-    }
-
-    return { positions: pos, sizes: sz, brightnesses: br, baseBrightnesses: bbr, twinklePhases: tp };
-  }, []);
-
-  // Slow entrance + gentle twinkle
   const enteredTime = useRef<number | null>(null);
   const wasEntered = useRef(false);
 
-  useFrame(({ clock }) => {
-    if (!pointsRef.current) return;
-    const t = clock.getElapsedTime();
+  // Star color temperatures
+  function starColor(temp: number): [number, number, number] {
+    // temp 0=warm orange, 0.5=white, 1=cool blue
+    if (temp < 0.3) return [1.0, 0.85, 0.65];      // warm yellow
+    if (temp < 0.5) return [1.0, 0.95, 0.9];        // soft white
+    if (temp < 0.7) return [0.9, 0.92, 1.0];        // cool white
+    return [0.7, 0.78, 1.0];                          // blue
+  }
 
-    if (entered && !wasEntered.current) {
-      enteredTime.current = t;
-      wasEntered.current = true;
-    }
-
-    const brAttr = pointsRef.current.geometry.getAttribute("aBrightness") as THREE.BufferAttribute;
-    const elapsed = enteredTime.current !== null ? t - enteredTime.current : -1;
-
+  const farLayer = useMemo(() => {
+    const count = 600;
+    const pos = new Float32Array(count * 3);
+    const sz = new Float32Array(count);
+    const br = new Float32Array(count);
+    const col = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      // Slow fade-in over 3-8 seconds (staggered by index hash)
-      let entrance = 0;
-      if (elapsed >= 0) {
-        const hash = Math.sin(i * 311.7 + 127.1) * 43758.5453;
-        const delay = 2.0 + (hash - Math.floor(hash)) * 6.0;
-        const raw = Math.max(0, Math.min(1, (elapsed - delay) / 1.5));
-        entrance = raw * raw; // ease-in for stars — they emerge gradually
-      }
-
-      // Gentle twinkle — slow, subtle
-      const twinkle = 1.0 + 0.15 * Math.sin(t * 0.3 + twinklePhases[i]) *
-        Math.sin(t * 0.7 + twinklePhases[i] * 2.3);
-
-      brAttr.setX(i, baseBrightnesses[i] * twinkle * entrance);
+      // Cover entire sky dome
+      pos[i * 3] = (Math.random() - 0.5) * 80;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 50;
+      pos[i * 3 + 2] = -20 - Math.random() * 40;
+      sz[i] = 0.15 + Math.random() * 0.4;
+      br[i] = 0.04 + Math.random() * 0.12;
+      const c = starColor(Math.random());
+      col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
     }
-    brAttr.needsUpdate = true;
-  });
+    return { count, pos, sz, br, col };
+  }, []);
+
+  const midLayer = useMemo(() => {
+    const count = 200;
+    const pos = new Float32Array(count * 3);
+    const sz = new Float32Array(count);
+    const br = new Float32Array(count);
+    const col = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 50;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 30;
+      pos[i * 3 + 2] = -8 - Math.random() * 15;
+      sz[i] = 0.4 + Math.random() * 0.8;
+      br[i] = 0.08 + Math.random() * 0.2;
+      const c = starColor(Math.random());
+      col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+    }
+    return { count, pos, sz, br, col };
+  }, []);
+
+  const nearLayer = useMemo(() => {
+    const count = 40;
+    const pos = new Float32Array(count * 3);
+    const sz = new Float32Array(count);
+    const br = new Float32Array(count);
+    const col = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 30;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 20;
+      pos[i * 3 + 2] = -4 - Math.random() * 8;
+      sz[i] = 1.0 + Math.random() * 2.0;
+      br[i] = 0.15 + Math.random() * 0.35;
+      const c = starColor(Math.random());
+      col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+    }
+    return { count, pos, sz, br, col };
+  }, []);
+
+  function makeGeo(layer: { count: number; pos: Float32Array; sz: Float32Array; br: Float32Array; col: Float32Array }) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(layer.pos, 3));
+    geo.setAttribute("aSize", new THREE.BufferAttribute(layer.sz, 1));
+    geo.setAttribute("aBrightness", new THREE.BufferAttribute(new Float32Array(layer.count).fill(0), 1));
+    geo.setAttribute("aColor", new THREE.BufferAttribute(layer.col, 3));
+    return geo;
+  }
+
+  const farGeo = useMemo(() => makeGeo(farLayer), [farLayer]);
+  const midGeo = useMemo(() => makeGeo(midLayer), [midLayer]);
+  const nearGeo = useMemo(() => makeGeo(nearLayer), [nearLayer]);
 
   const material = useMemo(
     () => new THREE.ShaderMaterial({
@@ -293,15 +378,123 @@ function Starfield({ entered }: { entered: boolean }) {
     []
   );
 
-  const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
-    geo.setAttribute("aBrightness", new THREE.BufferAttribute(brightnesses, 1));
-    return geo;
-  }, [positions, sizes, brightnesses]);
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
 
-  return <points ref={pointsRef} geometry={geometry} material={material} />;
+    if (entered && !wasEntered.current) {
+      enteredTime.current = t;
+      wasEntered.current = true;
+    }
+
+    const elapsed = enteredTime.current !== null ? t - enteredTime.current : -1;
+
+    // Update each layer
+    const layers = [
+      { ref: farRef, data: farLayer, entranceStart: 1.5, entranceSpread: 4.0, twinkleSpeed: 0.2, twinkleAmt: 0.1 },
+      { ref: midRef, data: midLayer, entranceStart: 2.0, entranceSpread: 3.0, twinkleSpeed: 0.4, twinkleAmt: 0.2 },
+      { ref: nearRef, data: nearLayer, entranceStart: 3.0, entranceSpread: 5.0, twinkleSpeed: 0.6, twinkleAmt: 0.25 },
+    ];
+
+    for (const layer of layers) {
+      if (!layer.ref.current) continue;
+      const brAttr = layer.ref.current.geometry.getAttribute("aBrightness") as THREE.BufferAttribute;
+
+      for (let i = 0; i < layer.data.count; i++) {
+        let entrance = 0;
+        if (elapsed >= 0) {
+          const hash = Math.sin(i * 311.7 + 127.1) * 43758.5453;
+          const delay = layer.entranceStart + (hash - Math.floor(hash)) * layer.entranceSpread;
+          const raw = Math.max(0, Math.min(1, (elapsed - delay) / 2.0));
+          entrance = raw * raw;
+        }
+
+        // Multi-frequency twinkle for realism
+        const phase = i * 1.618; // golden ratio spread
+        const twinkle = 1.0 +
+          layer.twinkleAmt * Math.sin(t * layer.twinkleSpeed + phase) *
+          Math.sin(t * layer.twinkleSpeed * 1.7 + phase * 0.7);
+
+        brAttr.setX(i, layer.data.br[i] * twinkle * entrance);
+      }
+      brAttr.needsUpdate = true;
+    }
+  });
+
+  return (
+    <>
+      <points ref={farRef} geometry={farGeo} material={material} />
+      <points ref={midRef} geometry={midGeo} material={material.clone()} />
+      <points ref={nearRef} geometry={nearGeo} material={material.clone()} />
+    </>
+  );
+}
+
+// Nebula clouds — soft colored fog patches adding depth
+function NebulaClouds({ entered }: { entered: boolean }) {
+  const enteredTime = useRef<number | null>(null);
+  const wasEntered = useRef(false);
+
+  // Define 4-5 nebula patches at different positions
+  const clouds = useMemo(() => [
+    { pos: [-8, 3, -25] as [number, number, number], scale: 18, color: [0.08, 0.06, 0.18] as [number, number, number], opacity: 0.12, rot: 0.3 },
+    { pos: [10, -4, -30] as [number, number, number], scale: 22, color: [0.12, 0.05, 0.10] as [number, number, number], opacity: 0.08, rot: -0.5 },
+    { pos: [0, 6, -35] as [number, number, number], scale: 25, color: [0.04, 0.06, 0.14] as [number, number, number], opacity: 0.10, rot: 0.8 },
+    { pos: [-12, -5, -20] as [number, number, number], scale: 15, color: [0.06, 0.04, 0.12] as [number, number, number], opacity: 0.07, rot: -0.2 },
+    { pos: [6, 2, -28] as [number, number, number], scale: 20, color: [0.10, 0.04, 0.08] as [number, number, number], opacity: 0.06, rot: 1.2 },
+  ], []);
+
+  const materials = useMemo(() => clouds.map(c =>
+    new THREE.ShaderMaterial({
+      vertexShader: nebulaVertShader,
+      fragmentShader: nebulaFragShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: {
+        uTime: { value: 0 },
+        uColor: { value: new THREE.Vector3(...c.color) },
+        uOpacity: { value: 0 },
+      },
+    })
+  ), [clouds]);
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+
+    if (entered && !wasEntered.current) {
+      enteredTime.current = t;
+      wasEntered.current = true;
+    }
+
+    const elapsed = enteredTime.current !== null ? t - enteredTime.current : -1;
+
+    materials.forEach((mat, i) => {
+      mat.uniforms.uTime.value = t;
+      // Fade in slowly over 4-8 seconds
+      let entrance = 0;
+      if (elapsed >= 0) {
+        const delay = 2.0 + i * 1.2;
+        const raw = Math.max(0, Math.min(1, (elapsed - delay) / 3.0));
+        entrance = raw * raw;
+      }
+      mat.uniforms.uOpacity.value = clouds[i].opacity * entrance;
+    });
+  });
+
+  return (
+    <>
+      {clouds.map((cloud, i) => (
+        <mesh
+          key={i}
+          position={cloud.pos}
+          rotation={[0, 0, cloud.rot]}
+        >
+          <planeGeometry args={[cloud.scale, cloud.scale]} />
+          <primitive object={materials[i]} attach="material" />
+        </mesh>
+      ))}
+    </>
+  );
 }
 
 // ========================= ATMOSPHERE =========================
