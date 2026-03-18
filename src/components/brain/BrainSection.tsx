@@ -208,6 +208,7 @@ export function BrainSection({ active, onExitBrain }: BrainSectionProps) {
         {showContent && ActiveContent && (
           <motion.div
             key={activeHub}
+            data-lenis-prevent
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -216,13 +217,13 @@ export function BrainSection({ active, onExitBrain }: BrainSectionProps) {
               position: "absolute",
               inset: 0,
               zIndex: 20,
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "center",
-              background: "rgba(5, 5, 7, 0.85)",
+              background: "rgba(5, 5, 7, 0.92)",
               backdropFilter: "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
-              overflow: "hidden",
+              overflowY: "auto",
+              overflowX: "hidden",
+              WebkitOverflowScrolling: "touch",
+              overscrollBehavior: "contain",
             }}
           >
             {/* Back button */}
@@ -235,10 +236,10 @@ export function BrainSection({ active, onExitBrain }: BrainSectionProps) {
               onClick={onBackToOverview}
               style={{
                 position: "fixed",
-                top: "32px",
-                left: "32px",
+                top: "clamp(16px, 3vw, 32px)",
+                left: "clamp(16px, 3vw, 32px)",
                 zIndex: 25,
-                background: "none",
+                background: "rgba(5,5,7,0.6)",
                 border: "1px solid rgba(255,255,255,0.1)",
                 borderRadius: "50%",
                 width: "44px",
@@ -267,9 +268,8 @@ export function BrainSection({ active, onExitBrain }: BrainSectionProps) {
               </svg>
             </motion.button>
 
-            {/* Content */}
+            {/* Content — single scrollable page, no inner box */}
             <motion.div
-              data-lenis-prevent
               initial={{ y: 40, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
@@ -277,12 +277,10 @@ export function BrainSection({ active, onExitBrain }: BrainSectionProps) {
               style={{
                 width: "100%",
                 maxWidth: activeHub === "playground" || activeHub === "who-i-am" || activeHub === "craft" ? "1100px" : "800px",
-                maxHeight: "85vh",
-                overflowY: "auto",
-                overflowX: "hidden",
-                overscrollBehavior: "contain",
-                WebkitOverflowScrolling: "touch",
+                margin: "0 auto",
                 padding: "clamp(24px, 5vw, 64px) clamp(16px, 4vw, 48px)",
+                paddingTop: "clamp(64px, 8vw, 96px)",
+                paddingBottom: "clamp(48px, 6vw, 80px)",
               }}
             >
               <Suspense
