@@ -188,8 +188,8 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
         scrub: true,
         onUpdate: (self) => {
           progressRef.current = self.progress;
-          // Only fire completion when scrolling FORWARD past 95%, not during reverse
-          if (self.progress > 0.95 && !completeFired.current && !reverseAnimating.current && self.direction === 1) {
+          // Only fire completion when past 95% and not during reverse animation
+          if (self.progress > 0.95 && !completeFired.current && !reverseAnimating.current) {
             completeFired.current = true;
             onSequenceComplete?.();
           }
@@ -384,6 +384,9 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
             pointerEvents: "none",
             zIndex: 2,
             maxWidth: isTouch ? "90%" : "auto",
+            padding: "24px 32px",
+            borderRadius: 12,
+            background: "radial-gradient(ellipse at center, rgba(5,5,7,0.6) 0%, transparent 70%)",
           }}
         >
           <div
