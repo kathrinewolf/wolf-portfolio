@@ -5,7 +5,7 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { motion } from "framer-motion";
-import { useIsTouchDevice } from "@/hooks/useMediaQuery";
+import { useIsTouchDevice, useIsMobile } from "@/hooks/useMediaQuery";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,6 +26,7 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
   const [isReady, setIsReady] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
   const isTouch = useIsTouchDevice();
+  const isMobile = useIsMobile();
 
   // Idle breathing state
   const idleFrame = useRef(0);
@@ -377,38 +378,41 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           transition={{ duration: 0.7, delay: 0.3 }}
           style={{
             position: "absolute",
-            left: isTouch ? "5%" : "5%",
-            top: isTouch ? "28%" : "50%",
-            transform: isTouch ? "none" : "translateY(-50%)",
+            left: "5%",
+            bottom: isMobile ? "15%" : "auto",
+            top: isMobile ? "auto" : "50%",
+            transform: isMobile ? "none" : "translateY(-50%)",
             textAlign: "left",
             pointerEvents: "none",
             zIndex: 2,
-            maxWidth: isTouch ? "60%" : "auto",
-            padding: isTouch ? "16px 20px" : "24px 32px",
+            maxWidth: isMobile ? "90%" : "auto",
+            padding: isMobile ? "16px 20px" : "24px 32px",
             borderRadius: 12,
             background: "none",
+            textShadow: isMobile ? "0 2px 12px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6)" : "none",
           }}
         >
           <div
             style={{
               fontFamily: "var(--font-mono), monospace",
-              fontSize: isTouch ? 8 : 11,
+              fontSize: isMobile ? 8 : 11,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
               color: "var(--text-tertiary)",
-              marginBottom: isTouch ? 8 : 16,
+              marginBottom: isMobile ? 6 : 16,
               lineHeight: 1.6,
             }}
           >
-            Home of<br />Alexander Wolf Pedersen
+            Home of Alexander Wolf Pedersen
           </div>
           <h1
             className="gradient-text"
             style={{
-              fontSize: isTouch ? "clamp(1.4rem, 5.5vw, 2rem)" : "clamp(2rem, 5vw, 4.5rem)",
+              fontSize: isMobile ? "clamp(1.2rem, 5vw, 1.8rem)" : "clamp(2rem, 5vw, 4.5rem)",
               fontWeight: 600,
               lineHeight: 1.1,
               letterSpacing: "-0.04em",
+              whiteSpace: isMobile ? "normal" : "nowrap",
             }}
           >
             Dive into my brain.
