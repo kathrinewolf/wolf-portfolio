@@ -17,12 +17,26 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wolf",
-  description: "Enter my mind.",
+  title: "Alexander Wolf Pedersen",
+  description: "Dive into my brain.",
   openGraph: {
-    title: "Wolf",
-    description: "Enter my mind.",
+    title: "Alexander Wolf Pedersen",
+    description: "Dive into my brain.",
     type: "website",
+    images: [
+      {
+        url: "/frames/frame-001.jpg",
+        width: 1284,
+        height: 716,
+        alt: "Alexander Wolf Pedersen",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Alexander Wolf Pedersen",
+    description: "Dive into my brain.",
+    images: ["/frames/frame-001.jpg"],
   },
 };
 
