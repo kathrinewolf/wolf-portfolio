@@ -1,376 +1,382 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useIsTouchDevice, useIsMobile } from "@/hooks/useMediaQuery";
-
-gsap.registerPlugin(ScrollTrigger);
-
-const FRAME_COUNT = 181;
+import { useIsMobile } from "@/hooks/useMediaQuery";
 
 interface Props {
   onSequenceComplete?: () => void;
   scrollBackRef?: React.MutableRefObject<(() => void) | null>;
 }
 
+type Phase = "idle" | "playing" | "completed" | "reversing";
+
 export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Props) {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const progressRef = useRef(0);
-  const framesRef = useRef<(HTMLImageElement | null)[]>(new Array(FRAME_COUNT).fill(null));
-  const lastDrawnIndex = useRef(-1);
-  const completeFired = useRef(false);
+  const idleVideoRef = useRef<HTMLVideoElement>(null);
+  const mainVideoRef = useRef<HTMLVideoElement>(null);
+  const reverseVideoRef = useRef<HTMLVideoElement>(null);
+  const heroTextRef = useRef<HTMLDivElement>(null);
+  const scrollHintRef = useRef<HTMLDivElement>(null);
+  const fadeOverlayRef = useRef<HTMLDivElement>(null);
+  const phaseRef = useRef<Phase>("idle");
   const [isReady, setIsReady] = useState(false);
-  const [loadProgress, setLoadProgress] = useState(0);
-  const isTouch = useIsTouchDevice();
+  const [resetCount, setResetCount] = useState(0);
   const isMobile = useIsMobile();
 
-  // Idle breathing state
-  const idleFrame = useRef(0);
-  const hasScrolled = useRef(false);
-  const reverseAnimating = useRef(false);
-
-  // Preload frames
+  // --- Loading: wait for idle clip ---
   useEffect(() => {
-    let cancelled = false;
-    let loaded = 0;
+    const idle = idleVideoRef.current;
+    if (!idle) return;
 
-    const loadFrame = (index: number): Promise<void> => {
-      return new Promise((resolve) => {
-        if (framesRef.current[index]) { resolve(); return; }
-        const img = new Image();
-        img.onload = () => {
-          if (!cancelled) {
-            framesRef.current[index] = img;
-            loaded++;
-            setLoadProgress(loaded / FRAME_COUNT);
-          }
-          resolve();
-        };
-        img.onerror = () => resolve();
-        img.src = `/frames/frame-${String(index + 1).padStart(3, "0")}.jpg`;
-      });
+    const markReady = () => {
+      if (!isReady) setIsReady(true);
     };
 
-    const loadAll = async () => {
-      // Tier 1: first 15 frames
-      const tier1 = Array.from({ length: Math.min(15, FRAME_COUNT) }, (_, i) => i);
-      await Promise.all(tier1.map(loadFrame));
-      if (cancelled) return;
+    if (idle.readyState >= 3) {
+      markReady();
+    } else {
+      idle.addEventListener("canplaythrough", markReady, { once: true });
+    }
+    const fallback = setTimeout(markReady, 2500);
 
-      // Tier 2: every 5th frame
-      const tier2: number[] = [];
-      for (let i = 15; i < FRAME_COUNT; i += 5) {
-        if (!framesRef.current[i]) tier2.push(i);
-      }
-      await Promise.all(tier2.map(loadFrame));
-      if (cancelled) return;
-
-      // Wait for tier 1+2 before showing (~36 frames)
-      setIsReady(true);
-
-      // Tier 3: fill remaining in batches
-      const tier3: number[] = [];
-      for (let i = 0; i < FRAME_COUNT; i++) {
-        if (!framesRef.current[i]) tier3.push(i);
-      }
-      for (let b = 0; b < tier3.length; b += 10) {
-        if (cancelled) return;
-        await Promise.all(tier3.slice(b, b + 10).map(loadFrame));
-      }
+    return () => {
+      idle.removeEventListener("canplaythrough", markReady);
+      clearTimeout(fallback);
     };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    loadAll();
-    return () => { cancelled = true; };
-  }, []);
-
-  // Canvas drawing loop
+  // --- Ensure idle video plays (autoplay fallback) ---
   useEffect(() => {
     if (!isReady) return;
-    let rafId: number;
+    const idle = idleVideoRef.current;
+    if (!idle) return;
 
-    const draw = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) { rafId = requestAnimationFrame(draw); return; }
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { rafId = requestAnimationFrame(draw); return; }
-
-      const progress = progressRef.current;
-
-      // Track if user has scrolled
-      if (progress > 0.005) {
-        hasScrolled.current = true;
+    const tryPlay = () => {
+      if (idle.paused && phaseRef.current === "idle") {
+        idle.play().catch(() => {});
       }
-
-      // Determine frame index: idle breathing or scroll-driven
-      let frameIndex: number;
-      if (!hasScrolled.current && progress < 0.01) {
-        // Idle breathing: slowly loop frames 0-8
-        idleFrame.current += 0.04;
-        if (idleFrame.current > 8) idleFrame.current = 0;
-        frameIndex = Math.floor(idleFrame.current);
-      } else {
-        frameIndex = Math.min(
-          Math.floor(progress * (FRAME_COUNT - 1)),
-          FRAME_COUNT - 1
-        );
-      }
-
-      // Find best available frame
-      let frame = framesRef.current[frameIndex];
-      if (!frame) {
-        for (let d = 1; d < FRAME_COUNT; d++) {
-          if (frameIndex - d >= 0 && framesRef.current[frameIndex - d]) {
-            frame = framesRef.current[frameIndex - d];
-            break;
-          }
-          if (frameIndex + d < FRAME_COUNT && framesRef.current[frameIndex + d]) {
-            frame = framesRef.current[frameIndex + d];
-            break;
-          }
-        }
-      }
-
-      if (frame && frameIndex !== lastDrawnIndex.current) {
-        lastDrawnIndex.current = frameIndex;
-
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
-        if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-          canvas.width = w * dpr;
-          canvas.height = h * dpr;
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        }
-
-        ctx.clearRect(0, 0, w, h);
-
-        // Cover-fit
-        const imgRatio = frame.naturalWidth / frame.naturalHeight;
-        const canvasRatio = w / h;
-        let dw: number, dh: number, dx: number, dy: number;
-        if (imgRatio > canvasRatio) {
-          dh = h; dw = h * imgRatio; dx = (w - dw) / 2; dy = 0;
-        } else {
-          dw = w; dh = w / imgRatio; dx = 0; dy = (h - dh) / 2;
-        }
-        ctx.drawImage(frame, dx, dy, dw, dh);
-      }
-
-      // Fade to black in last 15%
-      const fadeStart = 0.85;
-      if (progress > fadeStart) {
-        const fadeAlpha = (progress - fadeStart) / (1 - fadeStart);
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
-        ctx.fillStyle = `rgba(5, 5, 7, ${fadeAlpha})`;
-        ctx.fillRect(0, 0, w, h);
-      }
-
-      rafId = requestAnimationFrame(draw);
     };
 
-    rafId = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafId);
-  }, [isReady]);
+    tryPlay();
+    const t = setTimeout(tryPlay, 300);
 
-  // ScrollTrigger
-  useGSAP(
-    () => {
-      if (!sectionRef.current || !isReady) return;
+    const onInteract = () => {
+      tryPlay();
+      document.removeEventListener("touchstart", onInteract);
+      document.removeEventListener("click", onInteract);
+    };
+    document.addEventListener("touchstart", onInteract, { once: true, passive: true });
+    document.addEventListener("click", onInteract, { once: true });
 
-      ScrollTrigger.create({
-        trigger: sectionRef.current,
-        start: "top top",
-        end: "bottom bottom",
-        scrub: true,
-        onUpdate: (self) => {
-          progressRef.current = self.progress;
-          // Only fire completion when past 95% and not during reverse animation
-          if (self.progress > 0.95 && !completeFired.current && !reverseAnimating.current) {
-            completeFired.current = true;
-            onSequenceComplete?.();
-          }
-        },
-      });
-    },
-    { scope: sectionRef, dependencies: [isReady] }
-  );
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("touchstart", onInteract);
+      document.removeEventListener("click", onInteract);
+    };
+  }, [isReady, resetCount]);
 
-  // Register scroll-back function — smoothly reverses the animation
+  // --- Scroll trigger: first scroll plays the full video ---
+  useEffect(() => {
+    if (!isReady || phaseRef.current !== "idle") return;
+    const section = sectionRef.current;
+    const mainVideo = mainVideoRef.current;
+    const idleVideo = idleVideoRef.current;
+    if (!section || !mainVideo) return;
+
+    const trigger = (e: Event) => {
+      if (phaseRef.current !== "idle") return;
+      if (e instanceof WheelEvent && Math.abs(e.deltaY) < 3) return;
+
+      phaseRef.current = "playing";
+      document.body.style.overflow = "hidden";
+
+      // Hide idle, show + play main
+      if (idleVideo) {
+        idleVideo.pause();
+        idleVideo.style.opacity = "0";
+      }
+      mainVideo.style.opacity = "1";
+      mainVideo.currentTime = 0;
+      mainVideo.play().catch(() => {});
+
+      // Fade hero text + scroll hint
+      if (heroTextRef.current) {
+        heroTextRef.current.style.transition = "opacity 0.8s ease";
+        heroTextRef.current.style.opacity = "0";
+      }
+      if (scrollHintRef.current) {
+        scrollHintRef.current.style.transition = "opacity 0.4s ease";
+        scrollHintRef.current.style.opacity = "0";
+      }
+
+      section.removeEventListener("wheel", trigger);
+      section.removeEventListener("touchstart", trigger);
+    };
+
+    section.addEventListener("wheel", trigger, { passive: true });
+    section.addEventListener("touchstart", trigger, { passive: true });
+
+    return () => {
+      section.removeEventListener("wheel", trigger);
+      section.removeEventListener("touchstart", trigger);
+    };
+  }, [isReady, resetCount]);
+
+  // --- Fade-to-black + completion on main video end ---
+  useEffect(() => {
+    const video = mainVideoRef.current;
+    if (!video) return;
+
+    let rafId: number;
+    const tick = () => {
+      if (phaseRef.current === "playing" && video.duration) {
+        const progress = video.currentTime / video.duration;
+        const FADE_START = 0.80;
+        if (fadeOverlayRef.current) {
+          fadeOverlayRef.current.style.opacity =
+            progress > FADE_START
+              ? String(Math.min(1, (progress - FADE_START) / (1 - FADE_START)))
+              : "0";
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    const onEnded = () => {
+      if (phaseRef.current !== "playing") return;
+      phaseRef.current = "completed";
+      if (fadeOverlayRef.current) fadeOverlayRef.current.style.opacity = "1";
+      document.body.style.overflow = "";
+      onSequenceComplete?.();
+    };
+
+    video.addEventListener("ended", onEnded);
+    return () => {
+      cancelAnimationFrame(rafId);
+      video.removeEventListener("ended", onEnded);
+    };
+  }, [onSequenceComplete]);
+
+  // --- Reverse: play the animation backwards, then show idle ---
   useEffect(() => {
     if (!scrollBackRef) return;
+
     scrollBackRef.current = () => {
-      const section = sectionRef.current;
-      if (!section || reverseAnimating.current) return;
-      reverseAnimating.current = true;
-      // Keep completeFired true during reverse to prevent re-triggering brain
-      completeFired.current = true;
+      const mainVideo = mainVideoRef.current;
+      const reverseVideo = reverseVideoRef.current;
+      const idleVideo = idleVideoRef.current;
+      const fade = fadeOverlayRef.current;
+      if (!mainVideo || !reverseVideo || !fade) return;
 
-      // Smooth reverse over 3.5s — lets user see the animation play backwards
-      const start = window.scrollY;
-      const end = section.offsetTop;
-      const duration = 3500;
-      const startTime = performance.now();
+      phaseRef.current = "reversing";
+      window.scrollTo(0, 0);
+      document.body.style.overflow = "hidden";
 
-      const easeInOutCubic = (t: number) =>
-        t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      // Hide main video, show reverse video on top
+      mainVideo.pause();
+      mainVideo.currentTime = 0;
+      mainVideo.style.opacity = "0";
 
-      const step = (now: number) => {
-        const elapsed = now - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const eased = easeInOutCubic(progress);
-        const current = start + (end - start) * eased;
-        window.scrollTo(0, current);
+      reverseVideo.style.opacity = "1";
+      reverseVideo.currentTime = 0;
+      reverseVideo.play().catch(() => {});
 
-        if (progress < 1) {
-          requestAnimationFrame(step);
-        } else {
-          reverseAnimating.current = false;
-          completeFired.current = false;
-          hasScrolled.current = false;
-          idleFrame.current = 0;
-          lastDrawnIndex.current = -1; // Force canvas redraw
-          progressRef.current = 0;
+      // Fade-from-black: lift the black overlay to reveal the reverse video
+      setTimeout(() => {
+        fade.style.transition = "opacity 0.6s ease";
+        fade.style.opacity = "0";
+      }, 50);
+
+      // When reverse video ends, switch to idle
+      const onReverseEnd = () => {
+        reverseVideo.removeEventListener("ended", onReverseEnd);
+
+        // Hide reverse, show idle
+        reverseVideo.style.opacity = "0";
+        reverseVideo.pause();
+        reverseVideo.currentTime = 0;
+
+        if (idleVideo) {
+          idleVideo.style.transition = "none";
+          idleVideo.style.opacity = "1";
+          idleVideo.currentTime = 0;
+          idleVideo.play().catch(() => {});
         }
+
+        phaseRef.current = "idle";
+        document.body.style.overflow = "";
+
+        // Restore hero text + scroll hint
+        if (heroTextRef.current) {
+          heroTextRef.current.style.transition = "opacity 0.5s ease";
+          heroTextRef.current.style.opacity = "1";
+        }
+        if (scrollHintRef.current) {
+          scrollHintRef.current.style.transition = "opacity 0.5s ease 0.2s";
+          scrollHintRef.current.style.opacity = "1";
+        }
+
+        // Re-arm scroll trigger
+        setTimeout(() => setResetCount((c) => c + 1), 300);
       };
-      requestAnimationFrame(step);
+
+      reverseVideo.addEventListener("ended", onReverseEnd);
     };
+
     return () => {
       if (scrollBackRef) scrollBackRef.current = null;
     };
   }, [scrollBackRef]);
 
-  // Hero text opacity — fade with scroll via ref
-  const heroTextRef = useRef<HTMLDivElement>(null);
+  // --- Fade overlay tracking for reverse video (fade back to black at end) ---
   useEffect(() => {
-    if (!isReady) return;
-    const check = () => {
-      const p = progressRef.current;
-      if (heroTextRef.current) {
-        // Full opacity 0-0.15, fade to 0 by 0.35
-        const opacity = p < 0.15 ? 1 : p > 0.35 ? 0 : 1 - (p - 0.15) / 0.2;
-        heroTextRef.current.style.opacity = String(Math.max(0, opacity));
+    const reverseVideo = reverseVideoRef.current;
+    if (!reverseVideo) return;
+
+    let rafId: number;
+    const tick = () => {
+      if (phaseRef.current === "reversing" && reverseVideo.duration) {
+        const progress = reverseVideo.currentTime / reverseVideo.duration;
+        // No fade-to-black on reverse — it ends with the portrait visible
       }
-      requestAnimationFrame(check);
+      rafId = requestAnimationFrame(tick);
     };
-    const id = requestAnimationFrame(check);
-    return () => cancelAnimationFrame(id);
-  }, [isReady]);
-
-  // Scroll assist: if user stops scrolling in the danger zone (80-95% = black fade),
-  // gently auto-complete the scroll to avoid getting stuck on a black screen
-  const scrollAssistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!isReady) return;
-    const onScroll = () => {
-      if (scrollAssistTimer.current) clearTimeout(scrollAssistTimer.current);
-      scrollAssistTimer.current = setTimeout(() => {
-        const p = progressRef.current;
-        const section = sectionRef.current;
-        if (!section || reverseAnimating.current) return;
-        // If stuck in the black-fade zone, auto-scroll to complete
-        if (p > 0.80 && p < 0.95) {
-          const target = section.offsetTop + section.offsetHeight;
-          window.scrollTo({ top: target, behavior: "smooth" });
-        }
-        // If barely started (under 5%), snap back to top for clean start
-        if (p > 0.02 && p < 0.05) {
-          window.scrollTo({ top: section.offsetTop, behavior: "smooth" });
-        }
-      }, 800); // Wait 800ms of no scrolling before assisting
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (scrollAssistTimer.current) clearTimeout(scrollAssistTimer.current);
-    };
-  }, [isReady]);
-
-  // Scroll hint visibility via ref
-  const scrollHintRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!isReady) return;
-    const check = () => {
-      if (scrollHintRef.current) {
-        scrollHintRef.current.style.opacity = progressRef.current < 0.03 ? "1" : "0";
-      }
-      requestAnimationFrame(check);
-    };
-    const id = requestAnimationFrame(check);
-    return () => cancelAnimationFrame(id);
-  }, [isReady]);
-
-  if (!isReady) {
-    return (
-      <div
-        style={{
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "var(--bg-deep)",
-          gap: "24px",
-        }}
-      >
-        <h1
-          className="gradient-text"
-          style={{
-            fontSize: "clamp(3rem, 10vw, 8rem)",
-            fontWeight: 600,
-            lineHeight: 1,
-            letterSpacing: "-0.03em",
-          }}
-        >
-          Wolf
-        </h1>
-        <div
-          style={{
-            width: "120px",
-            height: "2px",
-            background: "rgba(255,255,255,0.08)",
-            borderRadius: "1px",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              width: `${loadProgress * 100}%`,
-              height: "100%",
-              background: "rgba(255,255,255,0.4)",
-              transition: "width 0.3s ease",
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   return (
     <section
       ref={sectionRef}
-      style={{ height: "600vh", position: "relative" }}
+      style={{
+        height: "100vh",
+        position: "relative",
+        overflow: "hidden",
+        background: "var(--bg-deep)",
+      }}
     >
-      <div
+      {/* Idle video — looping blink/breathing */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <video
+        ref={idleVideoRef}
+        src="/hero-idle.mp4"
+        muted
+        autoPlay
+        playsInline
+        loop
+        preload="auto"
         style={{
-          position: "sticky",
-          top: 0,
-          height: "100vh",
+          position: "absolute",
+          inset: 0,
           width: "100%",
-          overflow: "hidden",
-          background: "var(--bg-deep)",
+          height: "100%",
+          objectFit: "cover",
+          transition: "opacity 0.3s ease",
         }}
-      >
-        <canvas
-          ref={canvasRef}
-          style={{ width: "100%", height: "100%", display: "block" }}
-        />
+      />
 
-        {/* Hero text overlay */}
+      {/* Main video — forward animation */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <video
+        ref={mainVideoRef}
+        src="/hero-video.mp4"
+        muted
+        playsInline
+        preload="auto"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          opacity: 0,
+          transition: "opacity 0.15s ease",
+        }}
+      />
+
+      {/* Reverse video — backward animation for backtrack */}
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <video
+        ref={reverseVideoRef}
+        src="/hero-reverse.mp4"
+        muted
+        playsInline
+        preload="auto"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          opacity: 0,
+          zIndex: 1,
+        }}
+      />
+
+      {/* Fade-to-black overlay */}
+      <div
+        ref={fadeOverlayRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "var(--bg-deep)",
+          opacity: 0,
+          pointerEvents: "none",
+          zIndex: 3,
+        }}
+      />
+
+      {/* Loading screen */}
+      {!isReady && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "var(--bg-deep)",
+            zIndex: 10,
+          }}
+        >
+          <h1
+            className="gradient-text"
+            style={{
+              fontSize: "clamp(3rem, 10vw, 8rem)",
+              fontWeight: 600,
+              lineHeight: 1,
+              letterSpacing: "-0.03em",
+            }}
+          >
+            Wolf
+          </h1>
+          <div
+            style={{
+              width: "120px",
+              height: "2px",
+              background: "rgba(255,255,255,0.08)",
+              borderRadius: "1px",
+              overflow: "hidden",
+              marginTop: "24px",
+            }}
+          >
+            <div
+              className="animate-pulse"
+              style={{
+                width: "40%",
+                height: "100%",
+                background: "rgba(255,255,255,0.4)",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Hero text */}
+      {isReady && (
         <motion.div
           ref={heroTextRef}
           initial={{ opacity: 0, y: 20 }}
@@ -379,17 +385,17 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           style={{
             position: "absolute",
             left: "5%",
-            bottom: isMobile ? "15%" : "auto",
-            top: isMobile ? "auto" : "50%",
-            transform: isMobile ? "none" : "translateY(-50%)",
+            top: "50%",
+            transform: "translateY(-50%)",
             textAlign: "left",
             pointerEvents: "none",
             zIndex: 2,
             maxWidth: isMobile ? "90%" : "auto",
             padding: isMobile ? "16px 20px" : "24px 32px",
             borderRadius: 12,
-            background: "none",
-            textShadow: isMobile ? "0 2px 12px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6)" : "none",
+            textShadow: isMobile
+              ? "0 2px 12px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6)"
+              : "0 1px 8px rgba(0,0,0,0.5)",
           }}
         >
           <div
@@ -408,7 +414,9 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
           <h1
             className="gradient-text"
             style={{
-              fontSize: isMobile ? "clamp(1.2rem, 5vw, 1.8rem)" : "clamp(2rem, 5vw, 4.5rem)",
+              fontSize: isMobile
+                ? "clamp(1.2rem, 5vw, 1.8rem)"
+                : "clamp(2rem, 5vw, 4.5rem)",
               fontWeight: 600,
               lineHeight: 1.1,
               letterSpacing: "-0.04em",
@@ -418,7 +426,10 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
             Dive into my brain.
           </h1>
         </motion.div>
+      )}
 
+      {/* Scroll hint */}
+      {isReady && (
         <div
           ref={scrollHintRef}
           style={{
@@ -432,6 +443,7 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
             flexDirection: "column",
             alignItems: "center",
             gap: "8px",
+            zIndex: 2,
           }}
         >
           <span
@@ -461,9 +473,7 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
             />
           </svg>
         </div>
-      </div>
+      )}
     </section>
   );
 }
-
-// MobileVideo removed — using canvas frame sequence on all devices

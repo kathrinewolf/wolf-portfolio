@@ -9,9 +9,7 @@ export default function Home() {
   const scrollBackRef = useRef<(() => void) | null>(null);
 
   const onExitBrain = useCallback(() => {
-    // 1. Fade out brain overlay (0.6s CSS transition)
     setBrainActive(false);
-    // 2. After fade completes, smooth-scroll the hero animation in reverse
     setTimeout(() => {
       scrollBackRef.current?.();
     }, 650);
