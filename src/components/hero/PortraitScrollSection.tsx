@@ -409,7 +409,7 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
               lineHeight: 1.6,
             }}
           >
-            Home of Alexander Wolf Pedersen
+            Home of{isMobile ? <br /> : " "}Alexander Wolf Pedersen
           </div>
           <h1
             className="gradient-text"
