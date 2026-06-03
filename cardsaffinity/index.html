@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CardsAffinity — Affinity Sales Tool</title>
+  <style>
+    :root {
+      --blue: #0057a8;
+      --blue-light: #e8f1fb;
+      --blue-mid: #3a7fd5;
+      --green: #1a7f4b;
+      --green-light: #e6f4ed;
+      --orange: #e05c00;
+      --orange-light: #fdf0e6;
+      --gray-bg: #f5f6f8;
+      --gray-border: #dde1e9;
+      --text: #1a1d24;
+      --text-muted: #6b7280;
+      --white: #ffffff;
+      --radius: 10px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gray-bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--blue);
+      color: white;
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: -0.3px; }
+    .logo-badge {
+      background: white;
+      color: var(--blue);
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .api-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      opacity: 0.9;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ff6b6b;
+      transition: background 0.3s;
+    }
+    .status-dot.ok { background: #4ade80; }
+
+    /* ── Layout ── */
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+    }
+
+    /* ── API Key Setup ── */
+    #api-setup {
+      background: white;
+      border: 1px solid var(--gray-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+    #api-setup h3 { font-size: 14px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+    .api-row { display: flex; gap: 10px; align-items: center; }
+    .api-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--gray-border);
+      border-radius: 7px;
+      font-size: 14px;
+      font-family: monospace;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .api-row input:focus { border-color: var(--blue-mid); }
+    .api-note { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: white;
+      border: 1px solid var(--gray-border);
+      border-radius: var(--radius);
+      padding: 5px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+    .tab-btn:hover { background: var(--gray-bg); color: var(--text); }
+    .tab-btn.active { background: var(--blue); color: white; }
+    .tab-btn .icon { font-size: 16px; }
+
+    /* ── Panels ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: white;
+      border: 1px solid var(--gray-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .card h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 18px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Form ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+    input[type="text"], select, textarea {
+      padding: 10px 14px;
+      border: 1px solid var(--gray-border);
+      border-radius: 7px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+      background: white;
+      color: var(--text);
+    }
+    input[type="text"]:focus, select:focus, textarea:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(58,127,213,0.1); }
+    textarea { resize: vertical; min-height: 88px; }
+
+    /* ── Buttons ── */
+    .btn {
+      padding: 11px 22px;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-primary:hover { background: var(--blue-mid); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-copy { background: var(--green); color: white; font-size: 13px; padding: 8px 16px; }
+    .btn-copy:hover { background: #15693e; }
+    .btn-copy.copied { background: #6b7280; }
+    .btn-sm { padding: 7px 14px; font-size: 13px; font-weight: 500; }
+    .btn-outline { background: white; border: 1px solid var(--gray-border); color: var(--text); }
+    .btn-outline:hover { background: var(--gray-bg); }
+
+    .action-row { display: flex; justify-content: flex-end; margin-top: 18px; }
+
+    /* ── Stage Selector ── */
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .stage-btn {
+      padding: 10px 8px;
+      border: 2px solid var(--gray-border);
+      border-radius: 8px;
+      background: white;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      color: var(--text-muted);
+    }
+    .stage-btn:hover { border-color: var(--blue-mid); color: var(--text); }
+    .stage-btn.active {
+      border-color: var(--blue);
+      background: var(--blue-light);
+      color: var(--blue);
+      font-weight: 600;
+    }
+    .stage-label { font-size: 11px; opacity: 0.7; display: block; margin-top: 2px; }
+
+    /* ── Results ── */
+    .results-area {
+      margin-top: 20px;
+    }
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .results-header h3 { font-size: 15px; font-weight: 600; }
+
+    /* ── Lead Cards ── */
+    .lead-card {
+      border: 1px solid var(--gray-border);
+      border-radius: 9px;
+      padding: 18px;
+      margin-bottom: 12px;
+      background: white;
+      position: relative;
+    }
+    .lead-card:hover { border-color: var(--blue-mid); box-shadow: 0 2px 8px rgba(58,127,213,0.1); }
+    .lead-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+    .lead-name { font-size: 16px; font-weight: 700; color: var(--text); }
+    .lead-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .fit-score {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .fit-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .fit-high { background: var(--green-light); color: var(--green); }
+    .fit-mid { background: var(--orange-light); color: var(--orange); }
+    .fit-low { background: #f3f4f6; color: #6b7280; }
+
+    .lead-section { margin-top: 10px; }
+    .lead-section-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+    .lead-section p { font-size: 13px; line-height: 1.6; color: var(--text); }
+
+    .lead-products { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .product-tag {
+      font-size: 11px;
+      padding: 3px 9px;
+      background: var(--blue-light);
+      color: var(--blue);
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    /* ── Mail Output ── */
+    .mail-output {
+      background: #fafbfd;
+      border: 1px solid var(--gray-border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 16px;
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      font-family: inherit;
+      color: var(--text);
+      min-height: 200px;
+    }
+    .mail-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+    /* ── Loading ── */
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--gray-border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ── */
+    .error-box {
+      background: #fff5f5;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 14px 16px;
+      color: #b91c1c;
+      font-size: 13px;
+      margin-top: 14px;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .stage-grid { grid-template-columns: repeat(2, 1fr); }
+      main { padding: 16px 14px 48px; }
+      header { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span>CardsAffinity</span>
+    <span class="logo-badge">Affinity Sales</span>
+  </div>
+  <div class="api-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">API ikke konfigureret</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- API Key Setup -->
+  <div id="api-setup" class="card">
+    <h3>🔑 API-nøgle</h3>
+    <div class="api-row">
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off" />
+      <button class="btn btn-primary btn-sm" onclick="saveApiKey()">Gem</button>
+      <button class="btn btn-outline btn-sm" onclick="clearApiKey()">Ryd</button>
+    </div>
+    <p class="api-note">Nøglen gemmes kun i browserens localStorage. Den sendes direkte til Anthropic API.</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-leads" onclick="switchTab('leads')">
+      <span class="icon">🔍</span> Lead-research
+    </button>
+    <button class="tab-btn" id="tab-mail" onclick="switchTab('mail')">
+      <span class="icon">✉️</span> Mailgenerator
+    </button>
+  </div>
+
+  <!-- ════ LEAD RESEARCH PANEL ════ -->
+  <div id="panel-leads" class="panel active">
+    <div class="card">
+      <h2>🔍 Find potentielle partnere</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Branche / kategori</label>
+          <input type="text" id="l-branche" placeholder="f.eks. sport & fritid, optik, rejse" />
+        </div>
+        <div class="form-group">
+          <label>Marked</label>
+          <select id="l-marked">
+            <option value="DK">Danmark (DK)</option>
+            <option value="SE">Sverige (SE)</option>
+            <option value="NO">Norge (NO)</option>
+            <option value="FI">Finland (FI)</option>
+            <option value="DE">Tyskland (DE)</option>
+            <option value="Norden">Norden (DK/SE/NO/FI)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Partnertype</label>
+          <select id="l-type">
+            <option value="retailer">Retailer / fysiske butikker</option>
+            <option value="ecommerce">E-commerce / online</option>
+            <option value="event">Event & oplevelser</option>
+            <option value="service">Service & abonnement</option>
+            <option value="leasing">Leasing & mobilitet</option>
+            <option value="andet">Andet</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Kundestørrelse (ca.)</label>
+          <select id="l-size">
+            <option value="alle størrelser">Alle størrelser</option>
+            <option value="SMV (under 100 mio. kr. omsætning)">SMV</option>
+            <option value="mid-market (100–500 mio. kr. omsætning)">Mid-market</option>
+            <option value="enterprise (500+ mio. kr. omsætning)">Enterprise</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Ekstra kontekst (valgfri)</label>
+          <textarea id="l-kontekst" placeholder="F.eks. 'fokus på outdoor-segmentet', 'gerne med loyalitetsprogram', 'undgå discountbutikker'…"></textarea>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-primary" id="btnSearch" onclick="searchLeads()">
+          <span>🔍</span> Find 5 leads
+        </button>
+      </div>
+    </div>
+
+    <div id="leads-results" class="results-area"></div>
+  </div>
+
+  <!-- ════ MAIL GENERATOR PANEL ════ -->
+  <div id="panel-mail" class="panel">
+    <div class="card">
+      <h2>✉️ Generer salgsmail</h2>
+
+      <div class="form-group" style="margin-bottom:18px;">
+        <label style="margin-bottom:8px;">Salgsstadiet</label>
+        <div class="stage-grid">
+          <button class="stage-btn active" data-stage="Outreach" onclick="selectStage(this)">
+            Outreach
+            <span class="stage-label">Første kontakt</span>
+          </button>
+          <button class="stage-btn" data-stage="Dialog" onclick="selectStage(this)">
+            Dialog
+            <span class="stage-label">I samtale</span>
+          </button>
+          <button class="stage-btn" data-stage="Negotiation" onclick="selectStage(this)">
+            Negotiation
+            <span class="stage-label">Forhandling</span>
+          </button>
+          <button class="stage-btn" data-stage="Signed" onclick="selectStage(this)">
+            Signed
+            <span class="stage-label">Aftale indgået</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Partnernavn</label>
+          <input type="text" id="m-partner" placeholder="f.eks. Intersport Danmark" />
+        </div>
+        <div class="form-group">
+          <label>Kontaktpersons navn (valgfri)</label>
+          <input type="text" id="m-kontakt" placeholder="f.eks. Mette Hansen" />
+        </div>
+        <div class="form-group full">
+          <label>Kontekst / baggrund</label>
+          <textarea id="m-kontekst" placeholder="Hvad ved du om partneren? Hvad er situationen? Hvad skal mailen opnå?&#10;&#10;F.eks. 'Vi har haft et indledende møde. De sælger cykler og e-cykler. Interesseret i cykelforsikring men usikre på teknisk integration.'"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Tone</label>
+          <select id="m-tone">
+            <option value="professionel og varm">Professionel & varm</option>
+            <option value="direkte og forretningsorienteret">Direkte & forretningsorienteret</option>
+            <option value="uformel og relationsbyggende">Uformel & relationsbyggende</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Afsenders navn</label>
+          <input type="text" id="m-afsender" placeholder="Dit navn" />
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn-primary" id="btnMail" onclick="generateMail()">
+          <span>✉️</span> Generer mail
+        </button>
+      </div>
+    </div>
+
+    <div id="mail-result" class="results-area"></div>
+  </div>
+
+</main>
+
+<script>
+// ══════════════════════════════════════
+//  State
+// ══════════════════════════════════════
+let apiKey = localStorage.getItem('ca_api_key') || '';
+let selectedStage = 'Outreach';
+
+// ══════════════════════════════════════
+//  Init
+// ══════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (apiKey) {
+    document.getElementById('apiKeyInput').value = apiKey;
+    updateStatus(true);
+  }
+});
+
+// ══════════════════════════════════════
+//  API Key
+// ══════════════════════════════════════
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val.startsWith('sk-ant-')) {
+    alert('API-nøglen skal starte med sk-ant-');
+    return;
+  }
+  apiKey = val;
+  localStorage.setItem('ca_api_key', apiKey);
+  updateStatus(true);
+}
+
+function clearApiKey() {
+  apiKey = '';
+  localStorage.removeItem('ca_api_key');
+  document.getElementById('apiKeyInput').value = '';
+  updateStatus(false);
+}
+
+function updateStatus(ok) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot' + (ok ? ' ok' : '');
+  txt.textContent = ok ? 'API konfigureret' : 'API ikke konfigureret';
+}
+
+// ══════════════════════════════════════
+//  Tabs
+// ══════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+// ══════════════════════════════════════
+//  Stage
+// ══════════════════════════════════════
+function selectStage(el) {
+  document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedStage = el.dataset.stage;
+}
+
+// ══════════════════════════════════════
+//  Claude API call
+// ══════════════════════════════════════
+async function callClaude(systemPrompt, userPrompt) {
+  if (!apiKey) throw new Error('Ingen API-nøgle. Indtast din Anthropic API-nøgle øverst på siden.');
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }]
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `API fejl: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.content[0].text;
+}
+
+// ══════════════════════════════════════
+//  Lead Research
+// ══════════════════════════════════════
+const EXISTING_PARTNERS = ['Elgiganten','Billetlugen','AudioNova','Power','Europcar','GreenMobility','Novasol','Musikdk','Webhallen','ELKO'];
+
+const LEAD_SYSTEM = `Du er en B2B-salgsstrateg specialiseret i embedded insurance og affinity-forsikringer i Skandinavien og Europa.
+
+Du arbejder for CardsAffinity (del af Tryg-gruppen), som sælger embedded og add-on forsikringer via partnere.
+Produktportefølje: all-risk elektronikforsikring, skærmforsikring, aflysningsforsikring, cykelforsikring, brilleforsikring, høreapparatforsikring, ID-tyveri-forsikring, PPI, selvrisikoforsikring, rejseforsikring, varmepumpeforsikring m.fl.
+Primære markeder: DK (hoved), SE, NO, FI, DE.
+
+Eksisterende partnere (må IKKE foreslås som leads): ${EXISTING_PARTNERS.join(', ')}.
+
+Når du foreslår leads, vær konkret og realistisk — brug rigtige virksomhedsnavne der faktisk eksisterer i det pågældende marked.
+
+Svar KUN i følgende JSON-format (intet andet tekst):
+{
+  "leads": [
+    {
+      "navn": "Firmanavn",
+      "branche": "Branche/kategori",
+      "land": "DK/SE/NO/FI/DE",
+      "type": "Retailer/E-commerce/osv.",
+      "fit_score": 85,
+      "fit_begrundelse": "Kort forklaring på fit-scoren (2-3 sætninger)",
+      "forsikringsvinkel": "Hvilke produkter passer, og hvorfor (2-3 sætninger)",
+      "tilgangsanbefaling": "Konkret råd om hvordan man bedst nærmer sig virksomheden (2-3 sætninger)",
+      "produkter": ["produkt1", "produkt2"]
+    }
+  ]
+}`;
+
+async function searchLeads() {
+  const branche = document.getElementById('l-branche').value.trim();
+  const marked = document.getElementById('l-marked').value;
+  const type = document.getElementById('l-type').value;
+  const size = document.getElementById('l-size').value;
+  const kontekst = document.getElementById('l-kontekst').value.trim();
+
+  if (!branche) {
+    alert('Angiv venligst en branche.');
+    return;
+  }
+
+  const btn = document.getElementById('btnSearch');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px"></div> Søger...';
+
+  const resultsEl = document.getElementById('leads-results');
+  resultsEl.innerHTML = `<div class="loading"><div class="spinner"></div>Finder 5 potentielle partnere via Claude…</div>`;
+
+  const userPrompt = `Find 5 potentielle partnere med følgende profil:
+- Branche: ${branche}
+- Marked: ${marked}
+- Partnertype: ${type}
+- Størrelse: ${size}
+${kontekst ? `- Ekstra kontekst: ${kontekst}` : ''}
+
+Foreslå 5 konkrete, eksisterende virksomheder som vil passe godt som affinity-forsikringspartnere for CardsAffinity.`;
+
+  try {
+    const raw = await callClaude(LEAD_SYSTEM, userPrompt);
+    const json = JSON.parse(raw.replace(/```json\n?|\n?```/g, '').trim());
+    renderLeads(json.leads);
+  } catch (e) {
+    resultsEl.innerHTML = `<div class="error-box">⚠️ ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>🔍</span> Find 5 leads';
+  }
+}
+
+function fitClass(score) {
+  if (score >= 75) return 'fit-high';
+  if (score >= 55) return 'fit-mid';
+  return 'fit-low';
+}
+
+function renderLeads(leads) {
+  const el = document.getElementById('leads-results');
+  if (!leads || leads.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🤷</div>Ingen leads fundet. Prøv andre kriterier.</div>';
+    return;
+  }
+
+  const html = leads.map((l, i) => `
+    <div class="lead-card">
+      <div class="lead-header">
+        <div>
+          <div class="lead-name">${i+1}. ${esc(l.navn)}</div>
+          <div class="lead-meta">${esc(l.branche)} · ${esc(l.land)} · ${esc(l.type)}</div>
+        </div>
+        <div class="fit-score">
+          <div class="fit-badge ${fitClass(l.fit_score)}">${l.fit_score}/100</div>
+        </div>
+      </div>
+      <div class="lead-section">
+        <div class="lead-section-label">Fit-vurdering</div>
+        <p>${esc(l.fit_begrundelse)}</p>
+      </div>
+      <div class="lead-section">
+        <div class="lead-section-label">Forsikringsvinkel</div>
+        <p>${esc(l.forsikringsvinkel)}</p>
+      </div>
+      <div class="lead-section">
+        <div class="lead-section-label">Tilgangsanbefaling</div>
+        <p>${esc(l.tilgangsanbefaling)}</p>
+      </div>
+      ${l.produkter && l.produkter.length ? `
+      <div class="lead-products">
+        ${l.produkter.map(p => `<span class="product-tag">${esc(p)}</span>`).join('')}
+      </div>` : ''}
+    </div>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="results-header">
+      <h3>5 potentielle partnere</h3>
+    </div>
+    ${html}
+  `;
+}
+
+// ══════════════════════════════════════
+//  Mail Generator
+// ══════════════════════════════════════
+const STAGE_CONTEXT = {
+  Outreach: 'Dette er FØRSTE kontakt – partneren kender ikke CardsAffinity endnu. Mailen skal vække interesse, etablere relevans og opnå et møde/svar. Vær kortfattet og hook-drevet.',
+  Dialog: 'Vi er i AKTIV DIALOG – der har været kontakt og interesse er bekræftet. Mailen skal holde momentum, adressere spørgsmål/næste skridt og drive mod et konkret møde eller proposal.',
+  Negotiation: 'Vi er i FORHANDLINGSFASE – der diskuteres vilkår, kommission, teknik eller implementering. Mailen skal afklare åbne punkter, vise fleksibilitet og bevæge processen fremad.',
+  Signed: 'AFTALEN ER UNDERSKREVET – mailen er en warm onboarding/opfølgning der bekræfter samarbejdet, næste skridt og bygger relationen op til en god start.'
+};
+
+const MAIL_SYSTEM = `Du er en erfaren B2B-salgskonsulent hos CardsAffinity (Tryg-gruppen), som sælger embedded og add-on forsikringer.
+
+Om CardsAffinity:
+- Sælger embedded og add-on forsikringer til partnere i retail, events, rejse, elektronik, sport, optik mv.
+- Produkter: all-risk elektronikforsikring, skærmforsikring, aflysningsforsikring, cykelforsikring, brilleforsikring, høreapparatforsikring, ID-tyveri, PPI, selvrisikoforsikring, rejseforsikring, varmepumpeforsikring m.fl.
+- Markedsposition: Part of Tryg, Nordens største forsikringsselskab — troværdighed og stabilitet
+- Primære markeder: DK, SE, NO, FI, DE
+
+Skriv professionelle, naturlige salgsmails på DANSK der:
+- Lyder som en rigtig person (ikke generisk marketing-speak)
+- Er fokuserede og respekterer læserens tid
+- Har en klar call-to-action
+- Passer præcis til salgsstadiet
+
+Svar KUN med selve mailen (emnefeltet inkluderet som første linje med "Emne: "). Ingen forklaringer.`;
+
+async function generateMail() {
+  const partner = document.getElementById('m-partner').value.trim();
+  const kontakt = document.getElementById('m-kontakt').value.trim();
+  const kontekst = document.getElementById('m-kontekst').value.trim();
+  const tone = document.getElementById('m-tone').value;
+  const afsender = document.getElementById('m-afsender').value.trim();
+
+  if (!partner) { alert('Angiv partnernavn.'); return; }
+  if (!kontekst) { alert('Angiv kontekst for situationen.'); return; }
+
+  const btn = document.getElementById('btnMail');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px"></div> Genererer...';
+
+  document.getElementById('mail-result').innerHTML =
+    `<div class="loading"><div class="spinner"></div>Skriver mail til ${partner}…</div>`;
+
+  const stageCtx = STAGE_CONTEXT[selectedStage];
+  const userPrompt = `Skriv en salgsmail til følgende situation:
+
+Stadie: ${selectedStage}
+${stageCtx}
+
+Partner: ${partner}
+${kontakt ? `Kontaktperson: ${kontakt}` : 'Kontaktperson: ukendt (brug generisk hilsen)'}
+Tone: ${tone}
+${afsender ? `Afsender: ${afsender}` : ''}
+
+Kontekst og baggrund:
+${kontekst}
+
+Skriv mailen nu.`;
+
+  try {
+    const text = await callClaude(MAIL_SYSTEM, userPrompt);
+    renderMail(text, partner);
+  } catch (e) {
+    document.getElementById('mail-result').innerHTML = `<div class="error-box">⚠️ ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span>✉️</span> Generer mail';
+  }
+}
+
+function renderMail(text, partner) {
+  const el = document.getElementById('mail-result');
+  el.innerHTML = `
+    <div class="card">
+      <h2>✉️ Mailudkast — ${esc(partner)}</h2>
+      <div class="mail-output" id="mailText">${esc(text)}</div>
+      <div class="mail-actions">
+        <button class="btn btn-outline btn-sm" onclick="generateMail()">↺ Regenerer</button>
+        <button class="btn btn-copy" id="copyBtn" onclick="copyMail()">📋 Kopiér mail</button>
+      </div>
+    </div>
+  `;
+}
+
+function copyMail() {
+  const text = document.getElementById('mailText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Kopieret!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.innerHTML = '📋 Kopiér mail';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// ══════════════════════════════════════
+//  Util
+// ══════════════════════════════════════
+function esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
