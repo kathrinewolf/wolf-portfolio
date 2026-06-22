@@ -3,15 +3,17 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ProjectSection } from "../playground/ProjectSection";
+import { AgentFleetDemo } from "../playground/AgentFleetDemo";
 import { HealthDashboardDemo } from "../playground/HealthDashboardDemo";
 import { IceKoreAppDemo } from "../playground/IceKoreAppDemo";
 import { RademirDemo } from "../playground/RademirDemo";
 import { IceKoreSEODemo } from "../playground/IceKoreSEODemo";
 
 const PROJECTS = [
+  { id: "agent-fleet", label: "Agent Fleet" },
+  { id: "rademir", label: "Property AI" },
   { id: "health-dashboard", label: "Health OS" },
   { id: "icekore-app", label: "iceKore App" },
-  { id: "rademir", label: "Property Data" },
   { id: "icekore-seo", label: "iceKore SEO" },
 ];
 
@@ -106,7 +108,7 @@ export function Playground() {
             marginBottom: "12px",
           }}
         >
-          Playground
+          Projects
         </div>
         <h2
           className="gradient-text"
@@ -118,17 +120,18 @@ export function Playground() {
             marginBottom: "12px",
           }}
         >
-          Side projects & experiments
+          Building an AI-native company.
         </h2>
         <p
           style={{
             color: "var(--text-secondary)",
             fontSize: "1rem",
             lineHeight: 1.6,
-            maxWidth: "480px",
+            maxWidth: "520px",
           }}
         >
-          Things I build for fun, curiosity, and the love of making.
+          Most of what I build now runs on agents. Here is the system quietly
+          running a real company, and the experiments around it.
         </p>
       </motion.div>
 
@@ -186,8 +189,33 @@ export function Playground() {
       {/* Projects */}
       <div style={{ display: "flex", flexDirection: "column", gap: "80px" }}>
         <ProjectSection
-          id="health-dashboard"
+          id="agent-fleet"
           number="01"
+          title="The iceKore Agent Fleet"
+          tagline="Turned iceKore into an AI-native business with 10+ agents working autonomously."
+          description="Over the last months I rebuilt how iceKore runs. A fleet of specialized agents handles media buying, SEO, email, supplier ops, and analysis around the clock, coordinated by one orchestrator and grounded in a shared knowledge base. I designed the system, the agents, and the guardrails that keep a human in the loop on anything that leaves the building."
+          tags={["Claude", "MCP", "Multi-agent", "Automation"]}
+          observerRef={registerRef("agent-fleet")}
+        >
+          <AgentFleetDemo isVisible={visibleSections.has("agent-fleet")} />
+        </ProjectSection>
+
+        <ProjectSection
+          id="rademir"
+          number="02"
+          title="Property Intelligence"
+          tagline="Enhanced property listings with AI."
+          description="Paste any Danish property listing. Get it back enhanced with school proximity, crime stats, flood risk, noise levels, and AI analysis — all injected directly into the listing."
+          url="https://rademir.alexanderwp.com"
+          tags={["Next.js", "Claude AI", "Danish APIs", "Data Enrichment"]}
+          observerRef={registerRef("rademir")}
+        >
+          <RademirDemo isVisible={visibleSections.has("rademir")} />
+        </ProjectSection>
+
+        <ProjectSection
+          id="health-dashboard"
+          number="03"
           title="Health Dashboard"
           tagline="All your health data, gamified."
           description="Tired of scattered health apps, I connected them all and gamified the data. Sleep, activity, nutrition — one dashboard, one athlete rating that improves as you do."
@@ -200,7 +228,7 @@ export function Playground() {
 
         <ProjectSection
           id="icekore-app"
-          number="02"
+          number="04"
           title="iceKore App"
           tagline="Control your cold plunge from your phone."
           description="Control your iceKore cold plunge directly from your phone. Set temperature, track sessions, see your cold exposure history."
@@ -211,21 +239,8 @@ export function Playground() {
         </ProjectSection>
 
         <ProjectSection
-          id="rademir"
-          number="03"
-          title="Property Intelligence"
-          tagline="Enhanced property listings with AI."
-          description="Paste any Danish property listing. Get it back enhanced with school proximity, crime stats, flood risk, noise levels, and AI analysis — all injected directly into the listing."
-          url="https://rademir.alexanderwp.com"
-          tags={["Next.js", "Claude AI", "Danish APIs", "Data Enrichment"]}
-          observerRef={registerRef("rademir")}
-        >
-          <RademirDemo isVisible={visibleSections.has("rademir")} />
-        </ProjectSection>
-
-        <ProjectSection
           id="icekore-seo"
-          number="04"
+          number="05"
           title="iceKore SEO Directory"
           tagline="Programmatic SEO at scale."
           description="Built a programmatic SEO directory of sauna and winter bathing clubs across Denmark to drive targeted organic traffic to iceKore."

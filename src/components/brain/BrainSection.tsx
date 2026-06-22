@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, Suspense, lazy, useCallback, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { NeuralNetwork } from "./NeuralNetwork";
 import { generateGraph } from "@/lib/neural-graph";
 import * as THREE from "three";
@@ -200,6 +201,24 @@ export function BrainSection({ active, onExitBrain }: BrainSectionProps) {
               />
             </svg>
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Escape hatch — quiet off-ramp to the ordinary one-pager */}
+      <AnimatePresence>
+        {showLabels && entered && (
+          <motion.div
+            className="brain-escape"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7, delay: 2.6 }}
+          >
+            <Link href="/classic" data-hover className="brain-escape-link">
+              What happened to the good old days with normal websites?
+              <span aria-hidden> &rarr;</span>
+            </Link>
+          </motion.div>
         )}
       </AnimatePresence>
 

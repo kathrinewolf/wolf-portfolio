@@ -18,15 +18,30 @@ interface Role {
 
 const ROLES: Role[] = [
   {
+    company: "Entrepreneur \u00b7 AI Builder",
+    title: "Value creator across health & tech",
+    period: "Mar 2026 \u2013 Present",
+    current: true,
+    summary:
+      "I build things I\u2019m passionate about. Whether that\u2019s companies in the health space or innovative tech solutions. Lately that means designing AI systems and agent fleets that let small teams operate like much bigger ones, and creating value wherever I can plug in.",
+    stats: [
+      { label: "Mode", value: "Founder + builder" },
+      { label: "Focus", value: "Health & AI" },
+      { label: "Approach", value: "AI-native, hands-on" },
+    ],
+  },
+  {
     company: "iceKore",
-    title: "Co-Founder & Marketing Lead",
+    title: "Co-Founder \u00b7 Marketing & AI Systems",
     period: "Nov 2024 \u2013 Present",
     current: true,
     summary:
-      "Turned a backyard side-project into Denmark\u2019s leading high-end cold plunge company. Own all marketing, negotiated celebrity partnerships, and scaled paid acquisition profitably.",
+      "Co-founded iceKore and turned a backyard build into Denmark\u2019s high-end cold plunge brand. I own marketing, growth, and the whole digital stack. Over the last months I rebuilt the company to run on AI: a fleet of 10+ agents that handle marketing, SEO, email, supplier ops, and analysis, coordinated by one orchestrator on a shared knowledge base.",
     stats: [
       { label: "Role", value: "Co-Founder" },
-      { label: "Scope", value: "Full-stack marketing" },
+      { label: "Agents in production", value: "10+" },
+      { label: "Built", value: "AI-native ops" },
+      { label: "Scope", value: "Marketing + AI" },
     ],
   },
   {
@@ -102,8 +117,9 @@ export function Work() {
             maxWidth: 520,
           }}
         >
-          From startups to 7-figure launches. Always somewhere between
-          strategy, data, and getting things out the door.
+          From startups to 7-figure launches, and lately to building the AI
+          systems that run a company. Always somewhere between strategy, data,
+          and getting things out the door.
         </motion.p>
       </div>
 
