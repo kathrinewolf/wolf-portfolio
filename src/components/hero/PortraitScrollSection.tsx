@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useIsMobile } from "@/hooks/useMediaQuery";
+import { useIsMobile, useIsTouchDevice } from "@/hooks/useMediaQuery";
 
 interface Props {
   onSequenceComplete?: () => void;
@@ -23,6 +23,9 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
   const [isReady, setIsReady] = useState(false);
   const [resetCount, setResetCount] = useState(0);
   const isMobile = useIsMobile();
+  const isTouch = useIsTouchDevice();
+  // Touch devices (or a narrow viewport) get tap-to-play; mouse users keep scroll.
+  const tapToStart = isTouch || isMobile;
 
   // --- Loading: wait for idle clip ---
   useEffect(() => {
@@ -60,6 +63,23 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
 
     tryPlay();
     const t = setTimeout(tryPlay, 300);
+
+    // Prime the main video (decode the first frames) so that when the user
+    // triggers it — a tap on mobile — playback starts instantly with no gap.
+    const main = mainVideoRef.current;
+    if (main) {
+      main.muted = true;
+      main
+        .play()
+        .then(() => {
+          // Only pause if the user hasn't already triggered real playback.
+          if (phaseRef.current === "idle") {
+            main.pause();
+            main.currentTime = 0;
+          }
+        })
+        .catch(() => {});
+    }
 
     const onInteract = () => {
       tryPlay();
@@ -111,17 +131,20 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
       }
 
       section.removeEventListener("wheel", trigger);
-      section.removeEventListener("touchstart", trigger);
+      section.removeEventListener("click", trigger);
     };
 
-    section.addEventListener("wheel", trigger, { passive: true });
-    section.addEventListener("touchstart", trigger, { passive: true });
+    // A tap works on every device (on mobile the page is one screen tall, so a
+    // swipe can't scroll and feels broken — an explicit tap is deliberate and
+    // fires instantly). Mouse users additionally keep the scroll-to-play trigger.
+    section.addEventListener("click", trigger);
+    if (!isTouch) section.addEventListener("wheel", trigger, { passive: true });
 
     return () => {
       section.removeEventListener("wheel", trigger);
-      section.removeEventListener("touchstart", trigger);
+      section.removeEventListener("click", trigger);
     };
-  }, [isReady, resetCount]);
+  }, [isReady, resetCount, isTouch]);
 
   // --- Fade-to-black + completion on main video end ---
   useEffect(() => {
@@ -455,23 +478,36 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
               color: "rgba(255,255,255,0.5)",
             }}
           >
-            Scroll to explore
+            {tapToStart ? "Tap to begin" : "Scroll to explore"}
           </span>
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            className="animate-scroll-hint"
-          >
-            <path
-              d="M10 4v12M4 10l6 6 6-6"
-              stroke="rgba(255,255,255,0.5)"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          {tapToStart ? (
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 30 30"
+              fill="none"
+              className="animate-pulse"
+            >
+              <circle cx="15" cy="15" r="13" stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" />
+              <path d="M12.5 11l6 4-6 4z" fill="rgba(255,255,255,0.6)" />
+            </svg>
+          ) : (
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              className="animate-scroll-hint"
+            >
+              <path
+                d="M10 4v12M4 10l6 6 6-6"
+                stroke="rgba(255,255,255,0.5)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
         </div>
       )}
     </section>

@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, type CSSProperties } from "react";
 import { motion, useInView, useAnimation, AnimatePresence } from "framer-motion";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 
 /* ───────── Constants ───────── */
 
@@ -122,6 +123,7 @@ const VIRTUE_POSITIONS = [
 function VirtueScatter() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.3 });
+  const isMobile = useIsMobile();
 
   return (
     <div
@@ -168,7 +170,7 @@ function VirtueScatter() {
               position: "absolute",
               left: pos.x,
               top: pos.y,
-              fontSize: typeof window !== "undefined" && window.innerWidth < 768 ? pos.size * 0.7 : pos.size,
+              fontSize: isMobile ? pos.size * 0.7 : pos.size,
               fontWeight: pos.weight,
               letterSpacing: pos.size > 24 ? "-0.03em" : "0.04em",
               textTransform: pos.size < 20 ? "uppercase" : "none",

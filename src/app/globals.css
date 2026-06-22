@@ -113,6 +113,55 @@ html.lenis, html.lenis body { height: auto; }
   border-radius: 20px;
 }
 
+/* ---------- Brain escape hatch (off-ramp to /classic) ---------- */
+.brain-escape {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 28px;
+  display: flex;
+  justify-content: center;
+  z-index: 16;
+  pointer-events: none;
+  padding: 0 16px;
+}
+.brain-escape-link {
+  pointer-events: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.38);
+  text-decoration: none;
+  text-align: center;
+  transition: color 0.3s ease;
+}
+.brain-escape-link:hover {
+  color: rgba(255, 255, 255, 0.88);
+}
+@media (max-width: 768px) {
+  .brain-escape {
+    bottom: auto;
+    top: calc(84px + env(safe-area-inset-top));
+  }
+  .brain-escape-link {
+    font-size: 10px;
+    max-width: 78%;
+    line-height: 1.5;
+  }
+}
+
+/* ---------- Classic one-pager nav ---------- */
+@media (max-width: 640px) {
+  .classic-nav-links {
+    display: none !important;
+  }
+}
+.classic-brain-link:hover {
+  border-color: var(--stroke-hover) !important;
+  color: var(--text-primary) !important;
+}
+
 /* ---------- Hub label ---------- */
 .hub-label {
   font-family: var(--font-mono);

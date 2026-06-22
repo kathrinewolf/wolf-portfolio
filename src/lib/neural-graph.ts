@@ -24,7 +24,7 @@ export interface NeuralGraph {
 }
 
 const HUB_DEFINITIONS = [
-  { id: "hub-playground", label: "Projects", contentKey: "playground", description: "Things I'm building" },
+  { id: "hub-playground", label: "Projects", contentKey: "playground", description: "AI agents & experiments" },
   { id: "hub-craft", label: "What I Do", contentKey: "craft", description: "Skills & approach" },
   { id: "hub-work", label: "Work Experience", contentKey: "work", description: "Professional timeline" },
   { id: "hub-who", label: "Who Is This Guy?", contentKey: "who-i-am", description: "The person behind the work" },

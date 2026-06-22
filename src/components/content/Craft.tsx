@@ -57,7 +57,7 @@ const STRATEGIST_LINES = [
 ];
 
 const BUILDER_LINES = [
-  "AI-augmented execution",
+  "Agents doing the heavy lifting",
   "Vibe-coding prototypes overnight",
   "Automation-first workflows",
   "Move fast, learn faster",
@@ -140,7 +140,7 @@ function HeaderMission() {
       >
         <StatChip label="Focus" value="Health & Performance" />
         <StatChip label="Approach" value="Data-driven, human-first" />
-        <StatChip label="Execution" value="AI-augmented" />
+        <StatChip label="Execution" value="AI-native, agent-driven" />
       </motion.div>
     </div>
   );
@@ -235,24 +235,27 @@ function SectionEdge() {
 const CIRCLES = [
   {
     label: "Psychology",
-    color: "rgba(255, 180, 160, 0.06)",
-    border: "rgba(255, 180, 160, 0.12)",
+    color: "rgba(255, 175, 150, 0.20)",
+    border: "rgba(255, 175, 150, 0.5)",
+    labelColor: "rgba(255, 200, 182, 0.92)",
     left: "calc(50% - 170px)",
     top: "calc(50% - 100px)",
     labelPos: { left: "calc(50% - 260px)", top: "calc(50% - 120px)" } as CSSProperties,
   },
   {
     label: "Data & Tech",
-    color: "rgba(160, 180, 255, 0.06)",
-    border: "rgba(160, 180, 255, 0.12)",
+    color: "rgba(160, 182, 255, 0.20)",
+    border: "rgba(160, 182, 255, 0.5)",
+    labelColor: "rgba(190, 205, 255, 0.92)",
     left: "calc(50% + 10px)",
     top: "calc(50% - 100px)",
     labelPos: { right: "calc(50% - 260px)", top: "calc(50% - 120px)" } as CSSProperties,
   },
   {
     label: "Marketing",
-    color: "rgba(180, 255, 200, 0.06)",
-    border: "rgba(180, 255, 200, 0.12)",
+    color: "rgba(150, 235, 180, 0.20)",
+    border: "rgba(150, 235, 180, 0.5)",
+    labelColor: "rgba(180, 240, 205, 0.92)",
     left: "calc(50% - 80px)",
     top: "calc(50% + 10px)",
     labelPos: { left: "calc(50% - 40px)", bottom: "0px" } as CSSProperties,
@@ -316,16 +319,16 @@ function SectionIntersection() {
           <motion.span
             key={`label-${circle.label}`}
             initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 0.5 } : {}}
+            animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.6 + i * 0.15 }}
             style={{
               position: "absolute",
               ...circle.labelPos,
               fontFamily: "var(--font-mono), monospace",
-              fontSize: 10,
+              fontSize: 11,
               letterSpacing: "0.16em",
               textTransform: "uppercase",
-              color: "var(--text-tertiary)",
+              color: circle.labelColor,
               whiteSpace: "nowrap",
             }}
           >
@@ -650,7 +653,7 @@ function SectionClosing() {
             marginTop: 24,
           }}
         >
-          Built this site in a weekend with AI. Because of course I did.
+          Built this site, and the agents running my company, with AI. Because of course I did.
         </p>
       </FadeIn>
     </section>
