@@ -6,12 +6,14 @@ import { useIsMobile, useIsTouchDevice } from "@/hooks/useMediaQuery";
 
 interface Props {
   onSequenceComplete?: () => void;
+  /** fires the moment the dive video starts — used to prewarm the room */
+  onSequenceStart?: () => void;
   scrollBackRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 type Phase = "idle" | "playing" | "completed" | "reversing";
 
-export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Props) {
+export function PortraitScrollSection({ onSequenceComplete, onSequenceStart, scrollBackRef }: Props) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const idleVideoRef = useRef<HTMLVideoElement>(null);
   const mainVideoRef = useRef<HTMLVideoElement>(null);
@@ -27,24 +29,61 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
   // Touch devices (or a narrow viewport) get tap-to-play; mouse users keep scroll.
   const tapToStart = isTouch || isMobile;
 
-  // --- Loading: wait for idle clip ---
+  // --- Fully download the dive take, then swap it in as a blob src.
+  // canplaythrough lies on iOS: it fires optimistically and playback still
+  // starves mid-flight. A blob plays from memory — stalls become impossible.
+  useEffect(() => {
+    const main = mainVideoRef.current;
+    if (!main) return;
+    let url: string | null = null;
+    let cancelled = false;
+    fetch("/hero-video.mp4")
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error("fetch failed"))))
+      .then((b) => {
+        if (cancelled) return;
+        // never swap mid-playback; the watchdog covers that rare case
+        if (phaseRef.current !== "idle") return;
+        url = URL.createObjectURL(b);
+        main.src = url;
+        main.load();
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- Loading: wait for the idle clip AND the main take. A half-buffered
+  // main video stalls mid-flight on phones, freezing the dive. ---
   useEffect(() => {
     const idle = idleVideoRef.current;
-    if (!idle) return;
+    const main = mainVideoRef.current;
+    if (!idle || !main) return;
 
-    const markReady = () => {
-      if (!isReady) setIsReady(true);
+    let idleOk = idle.readyState >= 3;
+    let mainOk = main.readyState >= 3;
+    const check = () => {
+      if (idleOk && mainOk) setIsReady(true);
     };
-
-    if (idle.readyState >= 3) {
-      markReady();
-    } else {
-      idle.addEventListener("canplaythrough", markReady, { once: true });
-    }
-    const fallback = setTimeout(markReady, 2500);
+    const onIdle = () => {
+      idleOk = true;
+      check();
+    };
+    const onMain = () => {
+      mainOk = true;
+      check();
+    };
+    idle.addEventListener("canplaythrough", onIdle, { once: true });
+    main.addEventListener("canplaythrough", onMain, { once: true });
+    check();
+    // never hold the page hostage on a slow connection
+    const fallback = setTimeout(() => setIsReady(true), 3000);
 
     return () => {
-      idle.removeEventListener("canplaythrough", markReady);
+      idle.removeEventListener("canplaythrough", onIdle);
+      main.removeEventListener("canplaythrough", onMain);
       clearTimeout(fallback);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -110,6 +149,9 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
 
       phaseRef.current = "playing";
       document.body.style.overflow = "hidden";
+      // start booting the room behind the video: by the time the dive
+      // ends, the WebGL scene is already built and the cut is instant
+      onSequenceStart?.();
 
       // Hide idle, show + play main
       if (idleVideo) {
@@ -144,14 +186,27 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
       section.removeEventListener("wheel", trigger);
       section.removeEventListener("click", trigger);
     };
-  }, [isReady, resetCount, isTouch]);
+  }, [isReady, resetCount, isTouch, onSequenceStart]);
 
   // --- Fade-to-black + completion on main video end ---
   useEffect(() => {
     const video = mainVideoRef.current;
     if (!video) return;
 
+    const complete = () => {
+      if (phaseRef.current !== "playing") return;
+      phaseRef.current = "completed";
+      if (fadeOverlayRef.current) {
+        fadeOverlayRef.current.style.transition = "opacity 0.35s ease";
+        fadeOverlayRef.current.style.opacity = "1";
+      }
+      document.body.style.overflow = "";
+      onSequenceComplete?.();
+    };
+
     let rafId: number;
+    let lastT = -1;
+    let stallFrames = 0;
     const tick = () => {
       if (phaseRef.current === "playing" && video.duration) {
         const progress = video.currentTime / video.duration;
@@ -162,23 +217,23 @@ export function PortraitScrollSection({ onSequenceComplete, scrollBackRef }: Pro
               ? String(Math.min(1, (progress - FADE_START) / (1 - FADE_START)))
               : "0";
         }
+        // stall watchdog: if the take freezes while buffering, fade out
+        // and dive in rather than hanging on a frozen frame
+        if (video.currentTime === lastT && !video.paused) stallFrames++;
+        else stallFrames = 0;
+        lastT = video.currentTime;
+        if (progress >= 0.985 || (stallFrames > 40 && progress > 0.35)) {
+          complete();
+        }
       }
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
 
-    const onEnded = () => {
-      if (phaseRef.current !== "playing") return;
-      phaseRef.current = "completed";
-      if (fadeOverlayRef.current) fadeOverlayRef.current.style.opacity = "1";
-      document.body.style.overflow = "";
-      onSequenceComplete?.();
-    };
-
-    video.addEventListener("ended", onEnded);
+    video.addEventListener("ended", complete);
     return () => {
       cancelAnimationFrame(rafId);
-      video.removeEventListener("ended", onEnded);
+      video.removeEventListener("ended", complete);
     };
   }, [onSequenceComplete]);
 
